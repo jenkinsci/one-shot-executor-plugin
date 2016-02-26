@@ -34,11 +34,7 @@ import hudson.model.Result;
 import hudson.model.Run;
 import hudson.model.Slave;
 import hudson.model.TaskListener;
-import hudson.model.listeners.RunListener;
-import hudson.model.queue.CauseOfBlockage;
 import hudson.slaves.ComputerLauncher;
-import hudson.slaves.ComputerListener;
-import hudson.slaves.DelegatingComputerLauncher;
 import hudson.slaves.NodeProperty;
 import hudson.slaves.RetentionStrategy;
 import hudson.slaves.SlaveComputer;
@@ -111,6 +107,10 @@ public class OneShotExecutor extends Slave {
         } catch (IOException e) {
             e.printStackTrace(); // FIXME
         }
+    }
+
+    protected boolean hasRun() {
+        return run != null;
     }
 
     /**

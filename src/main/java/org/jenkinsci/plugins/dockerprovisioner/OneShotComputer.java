@@ -37,7 +37,6 @@ import jenkins.model.Jenkins;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
-import java.util.concurrent.Future;
 import java.util.logging.Logger;
 
 /**
@@ -66,7 +65,6 @@ public class OneShotComputer extends SlaveComputer {
         return slave;
     }
 
-
     @Extension
     public final static ComputerListener COMPUTER_LISTENER = new ComputerListener() {
 
@@ -78,21 +76,14 @@ public class OneShotComputer extends SlaveComputer {
         }
     };
 
-
-    /**
-     * We only accept one task on this computer, so can just shut down on task completion
-     * @param executor
-     * @param task
-     * @param durationMS
-     */
     @Override
-    public void taskCompleted(Executor executor, Queue.Task task, long durationMS) {
-        terminate();
-    }
-
-    @Override
-    public void taskCompletedWithProblems(Executor executor, Queue.Task task, long durationMS, Throwable problems) {
-        terminate();
+    protected boolean isAlive() {
+        if (getNode().hasRun()) {
+            // #isAlive is used from removeExecutor to determine if executors should be created to replace a terminated one
+            // We hook into this lifecycle implementation detail (sic) to get notified as the build completed
+            terminate();
+        }
+        return super.isAlive();
     }
 
     private void terminate() {
