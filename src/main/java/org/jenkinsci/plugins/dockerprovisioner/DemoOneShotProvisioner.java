@@ -25,18 +25,28 @@
 
 package org.jenkinsci.plugins.dockerprovisioner;
 
+import hudson.Extension;
 import hudson.model.Queue;
+import hudson.slaves.CommandLauncher;
+
+import java.util.Collections;
 
 /**
- * This provisioner is responsible to create ${@link OneShotExecutor}s.
- * Plugins to manage lightweight agents can use this extension point to determine jobs which require.
  * @author <a href="mailto:nicolas.deloof@gmail.com">Nicolas De Loof</a>
  */
-public abstract class OneShotProvisioner<T extends OneShotExecutor> {
+@Extension
+public class DemoOneShotProvisioner extends OneShotProvisioner {
 
-    protected abstract boolean usesOneShotExecutor(Queue.Item item);
+    @Override
+    protected boolean usesOneShotExecutor(Queue.Item item) {
+        return true;
+    }
 
-    public abstract OneShotExecutor prepareExecutorFor(Queue.BuildableItem item) throws Exception;
+    @Override
+    public OneShotExecutor prepareExecutorFor(Queue.BuildableItem item) throws Exception {
+
+            return new OneShotExecutor("executor for " + item.getDisplayName(),
+                    "/Users/nicolas/jenkins", null,
+                    new CommandLauncher("java -jar /Users/nicolas/Downloads/slave.jar"), Collections.EMPTY_LIST);
+    }
 }
-
-

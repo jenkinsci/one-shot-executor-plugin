@@ -25,28 +25,19 @@
 
 package org.jenkinsci.plugins.dockerprovisioner;
 
+import hudson.Extension;
 import hudson.model.Computer;
 import hudson.model.Executor;
 import hudson.model.Queue;
 import hudson.model.Run;
 import hudson.model.TaskListener;
-import hudson.remoting.Channel;
+import hudson.slaves.ComputerListener;
 import hudson.slaves.SlaveComputer;
-import hudson.util.StreamTaskListener;
 import jenkins.model.Jenkins;
 
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.charset.Charset;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
-import java.util.concurrent.FutureTask;
-import java.util.concurrent.RunnableFuture;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -54,20 +45,62 @@ import java.util.logging.Logger;
  */
 public class OneShotComputer extends SlaveComputer {
 
-    private final OneShotSlave slave;
+    private final OneShotExecutor slave;
 
-    public OneShotComputer(OneShotSlave slave) {
+    public OneShotComputer(OneShotExecutor slave) {
         super(slave);
         this.slave = slave;
     }
 
     /**
-     * Claim we are online so we get job attached to the executor, then can actually launch
-     * and report provisioning failure in the build log.
+     * Claim we are online so we get task assigned to the executor, so a ${@link Run} is created, then can actually
+     * launch and report provisioning status in the build log.
      */
     @Override
     public boolean isOffline() {
         return false;
+    }
+
+    @Override
+    public OneShotExecutor getNode() {
+        return slave;
+    }
+
+
+    @Extension
+    public final static ComputerListener COMPUTER_LISTENER = new ComputerListener() {
+
+        @Override
+        public void preLaunch(Computer c, TaskListener listener) throws IOException, InterruptedException {
+            if (c instanceof OneShotComputer) {
+                ((OneShotComputer) c).getNode().setComputerListener(listener);
+            }
+        }
+    };
+
+
+    /**
+     * We only accept one task on this computer, so can just shut down on task completion
+     * @param executor
+     * @param task
+     * @param durationMS
+     */
+    @Override
+    public void taskCompleted(Executor executor, Queue.Task task, long durationMS) {
+        terminate();
+    }
+
+    @Override
+    public void taskCompletedWithProblems(Executor executor, Queue.Task task, long durationMS, Throwable problems) {
+        terminate();
+    }
+
+    private void terminate() {
+        try {
+            Jenkins.getActiveInstance().removeNode(slave);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     /**
@@ -81,40 +114,9 @@ public class OneShotComputer extends SlaveComputer {
 
         final Queue.Executable executable = Executor.currentExecutor().getCurrentExecutable();
         if (executable instanceof Run) {
-            Run run = (Run) executable;
-            final OneShotAssignment action = run.getAction(OneShotAssignment.class);
-            // if (action == null) return;
-            doLaunch(run, action);
+            getNode().setRun((Run) executable);
         }
         return super.getDefaultCharset();
-    }
-
-    private void doLaunch(Run run, OneShotAssignment action) {
-        try {
-            final FileOutputStream out = new FileOutputStream(new File(run.getRootDir(), "executor.log"));
-            final StreamTaskListener listener = new StreamTaskListener(out);
-
-            OneShotSlave slave = (OneShotSlave) Jenkins.getActiveInstance().getNode(action.getAssignedNodeDisplayName());
-            slave.doLaunchFor(run, listener);
-        } catch (IOException e) {
-            LOGGER.log(Level.SEVERE, "Failure to launch One-Shot Slave", e);
-        } catch (InterruptedException e) {
-            LOGGER.log(Level.SEVERE, "Failure to launch One-Shot Slave", e);
-        }
-
-
-    }
-
-    /**
-     * Claim we can connect immediately. Actual connection will take place when the ${@link hudson.model.Run} starts.
-     */
-    @Override
-    protected Future<?> _connect(boolean forceReconnect) {
-        return Computer.threadPoolForRemoting.submit(new java.util.concurrent.Callable<Object>() {
-            public Object call() throws Exception {
-                return null;
-            }
-        });
     }
 
     private static final Logger LOGGER = Logger.getLogger(OneShotComputer.class.getName());

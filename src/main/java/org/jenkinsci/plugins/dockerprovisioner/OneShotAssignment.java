@@ -29,9 +29,12 @@ import hudson.model.InvisibleAction;
 import hudson.model.Label;
 import hudson.model.labels.LabelAssignmentAction;
 import hudson.model.queue.SubTask;
+import jenkins.model.Jenkins;
+
+import javax.annotation.CheckForNull;
 
 /**
- * This action track the ${@link OneShotSlave} allocated for a task.
+ * This action track the ${@link OneShotExecutor} allocated for a task.
  * @author <a href="mailto:nicolas.deloof@gmail.com">Nicolas De Loof</a>
  */
 public class OneShotAssignment extends InvisibleAction implements LabelAssignmentAction {
@@ -43,8 +46,9 @@ public class OneShotAssignment extends InvisibleAction implements LabelAssignmen
         this.assignedNodeName = assignedNodeName;
     }
 
-    public String getAssignedNodeDisplayName() {
-        return assignedNodeName;
+    public @CheckForNull
+    OneShotExecutor getAssignedNode() {
+        return (OneShotExecutor) Jenkins.getActiveInstance().getNode(assignedNodeName);
     }
 
     @Override
