@@ -27,6 +27,9 @@ package org.jenkinsci.plugins.dockerprovisioner;
 
 public class OneShotExecutorProvisioningError extends RuntimeException {
 
+    public OneShotExecutorProvisioningError() {
+    }
+
     public OneShotExecutorProvisioningError(Throwable cause) {
         super(cause);
     }

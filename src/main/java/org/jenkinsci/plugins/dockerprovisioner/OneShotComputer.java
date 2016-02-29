@@ -60,6 +60,10 @@ public class OneShotComputer extends SlaveComputer {
         return false;
     }
 
+    public boolean isActuallyOffline() {
+        return super.isOffline();
+    }
+
     @Override
     public OneShotExecutor getNode() {
         return slave;

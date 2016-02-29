@@ -117,6 +117,11 @@ public class OneShotExecutor extends Slave {
         return run != null;
     }
 
+    @Override
+    public OneShotComputer getComputer() {
+        return (OneShotComputer) super.getComputer();
+    }
+
     /**
      * Assign a ${@link Run} to this OneShotSlave. By design, only one Run can be assigned, then slave is shut down.
      * This method has to be called just as the ${@link Run} as been created. It run the actual launch of the executor
@@ -132,10 +137,12 @@ public class OneShotExecutor extends Slave {
 
         try {
             launcher.launch(this.getComputer(), computerListener);
-        } catch (IOException e) {
-            run.setResult(Result.NOT_BUILT);
-            throw new OneShotExecutorProvisioningError(e);
-        } catch (InterruptedException e) {
+
+            if (getComputer().isActuallyOffline()) {
+                run.setResult(Result.NOT_BUILT);
+                throw new OneShotExecutorProvisioningError();
+            }
+        } catch (Exception e) {
             run.setResult(Result.NOT_BUILT);
             throw new OneShotExecutorProvisioningError(e);
         }
