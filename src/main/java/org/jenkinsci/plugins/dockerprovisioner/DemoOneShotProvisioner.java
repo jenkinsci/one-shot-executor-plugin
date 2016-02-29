@@ -45,8 +45,7 @@ public class DemoOneShotProvisioner extends OneShotProvisioner {
     @Override
     public OneShotExecutor prepareExecutorFor(Queue.BuildableItem item) throws Exception {
 
-            return new OneShotExecutor("executor for " + item.getDisplayName(),
-                    "/Users/nicolas/jenkins", null,
-                    new CommandLauncher("java -jar /Users/nicolas/Downloads/slave.jar"), Collections.EMPTY_LIST);
+            return new OneShotExecutor(item,
+                    "/Users/nicolas/jenkins", new CommandLauncher("java -jar /Users/nicolas/Downloads/slave.jar"), Collections.EMPTY_LIST);
     }
 }

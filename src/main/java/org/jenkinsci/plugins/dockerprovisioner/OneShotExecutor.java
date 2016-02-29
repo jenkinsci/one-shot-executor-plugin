@@ -30,6 +30,7 @@ import hudson.console.ConsoleLogFilter;
 import hudson.model.AbstractBuild;
 import hudson.model.Computer;
 import hudson.model.Descriptor;
+import hudson.model.Queue;
 import hudson.model.Result;
 import hudson.model.Run;
 import hudson.model.Slave;
@@ -71,14 +72,17 @@ public class OneShotExecutor extends Slave {
     /** The ${@link Run} assigned to this OneShotSlave */
     private transient Run run;
 
-    public OneShotExecutor(String nodeDescription, String remoteFS, String labelString, ComputerLauncher launcher, List<? extends NodeProperty<?>> nodeProperties) throws Descriptor.FormException, IOException {
-        this(Long.toHexString(System.nanoTime()), nodeDescription, remoteFS, labelString, launcher, nodeProperties);
+    public OneShotExecutor(Queue.BuildableItem item, String remoteFS, ComputerLauncher launcher, List<? extends NodeProperty<?>> nodeProperties) throws Descriptor.FormException, IOException {
+        // Create a slave with a NoOp launcher, we will run the launcher later when a Run has been created.
+        super(Long.toHexString(System.nanoTime()), null, remoteFS, 1, Mode.EXCLUSIVE, null, NOOP_LAUNCHER, RetentionStrategy.NOOP, nodeProperties);
+        this.launcher = launcher;
     }
 
-    public OneShotExecutor(String name, String nodeDescription, String remoteFS, String labelString, ComputerLauncher launcher, List<? extends NodeProperty<?>> nodeProperties) throws Descriptor.FormException, IOException {
-        // Create a slave with a NoOp launcher, we will run the launcher later when a Run has been created.
-        super(name, nodeDescription, remoteFS, 1, Mode.EXCLUSIVE, labelString, NOOP_LAUNCHER, RetentionStrategy.NOOP, nodeProperties);
-        this.launcher = launcher;
+    @Override
+    public String getNodeDescription() {
+        return hasRun()
+            ? "executor for " + run.getFullDisplayName()
+            : super.getNodeDescription();
     }
 
     @Override
