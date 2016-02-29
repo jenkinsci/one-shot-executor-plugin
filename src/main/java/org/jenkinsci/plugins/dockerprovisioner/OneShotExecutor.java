@@ -168,24 +168,6 @@ public class OneShotExecutor extends Slave {
         }
     };
 
-
-/*    @Override
-    public CauseOfBlockage canTake(Queue.BuildableItem item) {
-        final OneShotAssignment assignment = item.getAction(OneShotAssignment.class);
-        if (assignment == null) return DEDICATED;
-        if (! assignment.getAssignedNodeDisplayName().equals(getDisplayName())) return DEDICATED;
-
-        return null;
-    }
-
-    public static final CauseOfBlockage DEDICATED = new CauseOfBlockage() {
-        @Override
-        public String getShortDescription() {
-            return "This slave is dedicated to another task";
-        }
-    };
-    */
-
     /**
      * Fake computer launche that is jug No-op as we wait for the job to get assigned to this executor before the
      * actual launch.
