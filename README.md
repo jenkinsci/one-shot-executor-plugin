@@ -18,7 +18,7 @@ created.
 
 There's no early initialization event we can listen to to catch this specific timing when the `Run` is created but
 didn't yet accessed the assigned `Computer`. As a _temporary workaround_ we rely on some Run's lifecycle implementation 
-details. See [https://github.com/jenkinsci/jenkins/pull/2045](PR#2045)
+details. See [PR#2045](https://github.com/jenkinsci/jenkins/pull/2045)
 
 As the `Run` is started the `OneShotExecutor` slave is actually launched, it's launch log is piped to the build log.
 TODO: maybe we should only do this when something goes wrong ?
@@ -27,4 +27,4 @@ If launch fails, the Run is also marked as failed. When build completes, the exe
  
 There's no event we can listen to to catch the Executor termination. If we use existing listener we run into a race
 condition as we try to terminate a Slave/Computer still being used by an active Executor. As a _temporary workaround_ 
-we rely on some Executor's lifecycle implementation details. See [https://github.com/jenkinsci/jenkins/pull/2045](PR#2045)
+we rely on some Executor's lifecycle implementation details. See [PR#2045](https://github.com/jenkinsci/jenkins/pull/2045)
