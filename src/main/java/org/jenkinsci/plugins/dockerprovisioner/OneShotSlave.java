@@ -62,7 +62,7 @@ import java.util.List;
  *
  * @author <a href="mailto:nicolas.deloof@gmail.com">Nicolas De Loof</a>
  */
-public class OneShotExecutor extends Slave {
+public class OneShotSlave extends Slave {
 
     private final transient ComputerLauncher launcher;
 
@@ -72,7 +72,7 @@ public class OneShotExecutor extends Slave {
     /** The ${@link Run} assigned to this OneShotSlave */
     private transient Run run;
 
-    public OneShotExecutor(Queue.BuildableItem item, String remoteFS, ComputerLauncher launcher, List<? extends NodeProperty<?>> nodeProperties) throws Descriptor.FormException, IOException {
+    public OneShotSlave(Queue.BuildableItem item, String remoteFS, ComputerLauncher launcher, List<? extends NodeProperty<?>> nodeProperties) throws Descriptor.FormException, IOException {
         // Create a slave with a NoOp launcher, we will run the launcher later when a Run has been created.
         super(Long.toHexString(System.nanoTime()), null, remoteFS, 1, Mode.EXCLUSIVE, null, NOOP_LAUNCHER, RetentionStrategy.NOOP, nodeProperties);
         this.launcher = launcher;
@@ -160,7 +160,7 @@ public class OneShotExecutor extends Slave {
             OneShotAssignment assignment = run.getAction(OneShotAssignment.class);
             if (assignment == null) return logger;
 
-            final OneShotExecutor slave = assignment.getAssignedNode();
+            final OneShotSlave slave = assignment.getAssignedNode();
             if (slave == null) return logger;
 
             slave.computerListener.setSideOutputStream(logger);

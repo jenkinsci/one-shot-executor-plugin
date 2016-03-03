@@ -34,7 +34,7 @@ import jenkins.model.Jenkins;
 import javax.annotation.CheckForNull;
 
 /**
- * This action track the ${@link OneShotExecutor} allocated for a task.
+ * This action track the ${@link OneShotSlave} allocated for a task.
  * @author <a href="mailto:nicolas.deloof@gmail.com">Nicolas De Loof</a>
  */
 public class OneShotAssignment extends InvisibleAction implements LabelAssignmentAction {
@@ -47,8 +47,8 @@ public class OneShotAssignment extends InvisibleAction implements LabelAssignmen
     }
 
     public @CheckForNull
-    OneShotExecutor getAssignedNode() {
-        return (OneShotExecutor) Jenkins.getActiveInstance().getNode(assignedNodeName);
+    OneShotSlave getAssignedNode() {
+        return (OneShotSlave) Jenkins.getActiveInstance().getNode(assignedNodeName);
     }
 
     @Override

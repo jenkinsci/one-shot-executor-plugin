@@ -38,7 +38,7 @@ import java.util.logging.Logger;
 /**
  * This ${@link QueueListener} is responsible for detecting jobs that are relying on a One-Shot executor.
  * When a task becomes buildable, it check all configured ${@link OneShotProvisioner} to determine if task do
- * match one of them criteria, then provision a ${@link OneShotExecutor} and assign it's name to the task as a
+ * match one of them criteria, then provision a ${@link OneShotSlave} and assign it's name to the task as a
  * label. As a result, the task won't be assigned to any executor but the one it just created.
  *
  * @author <a href="mailto:nicolas.deloof@gmail.com">Nicolas De Loof</a>
@@ -55,7 +55,7 @@ public class OneShotExecutorQueueListener extends QueueListener {
         for (OneShotProvisioner provisioner : ExtensionList.lookup(OneShotProvisioner.class)) {
             if (provisioner.usesOneShotExecutor(item)) {
                 try {
-                    OneShotExecutor slave = provisioner.prepareExecutorFor(item);
+                    OneShotSlave slave = provisioner.prepareExecutorFor(item);
                     item.addAction(new OneShotAssignment(slave.getNodeName()));
                     Jenkins.getActiveInstance().addNode(slave);
                     // slave.connect(true);

@@ -44,9 +44,9 @@ import java.util.logging.Logger;
  */
 public class OneShotComputer extends SlaveComputer {
 
-    private final OneShotExecutor slave;
+    private final OneShotSlave slave;
 
-    public OneShotComputer(OneShotExecutor slave) {
+    public OneShotComputer(OneShotSlave slave) {
         super(slave);
         this.slave = slave;
     }
@@ -65,7 +65,7 @@ public class OneShotComputer extends SlaveComputer {
     }
 
     @Override
-    public OneShotExecutor getNode() {
+    public OneShotSlave getNode() {
         return slave;
     }
 
