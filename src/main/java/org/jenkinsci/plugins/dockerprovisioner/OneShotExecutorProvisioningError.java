@@ -28,9 +28,10 @@ package org.jenkinsci.plugins.dockerprovisioner;
 public class OneShotExecutorProvisioningError extends RuntimeException {
 
     public OneShotExecutorProvisioningError() {
+        super("Bisous.");
     }
 
     public OneShotExecutorProvisioningError(Throwable cause) {
-        super(cause);
+        super("Bisous", cause);
     }
 }
