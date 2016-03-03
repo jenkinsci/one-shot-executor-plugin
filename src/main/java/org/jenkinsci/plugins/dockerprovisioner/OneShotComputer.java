@@ -27,8 +27,6 @@ package org.jenkinsci.plugins.dockerprovisioner;
 
 import hudson.Extension;
 import hudson.model.Computer;
-import hudson.model.Executor;
-import hudson.model.Queue;
 import hudson.model.Run;
 import hudson.model.TaskListener;
 import hudson.slaves.ComputerListener;
@@ -82,7 +80,7 @@ public class OneShotComputer extends SlaveComputer {
 
     @Override
     protected boolean isAlive() {
-        if (getNode().hasRun()) {
+        if (getNode().hasExecutable()) {
             // #isAlive is used from removeExecutor to determine if executors should be created to replace a terminated one
             // We hook into this lifecycle implementation detail (sic) to get notified as the build completed
             terminate();
@@ -106,13 +104,10 @@ public class OneShotComputer extends SlaveComputer {
      */
     @Override
     public Charset getDefaultCharset() {
-
-        final Queue.Executable executable = Executor.currentExecutor().getCurrentExecutable();
-        if (executable instanceof Run) {
-            getNode().setRun((Run) executable);
-        }
+        getNode().provision();
         return super.getDefaultCharset();
     }
+
 
     private static final Logger LOGGER = Logger.getLogger(OneShotComputer.class.getName());
 

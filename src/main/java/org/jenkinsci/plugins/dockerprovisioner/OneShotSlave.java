@@ -26,10 +26,12 @@
 package org.jenkinsci.plugins.dockerprovisioner;
 
 import hudson.Extension;
+import hudson.Launcher;
 import hudson.console.ConsoleLogFilter;
 import hudson.model.AbstractBuild;
 import hudson.model.Computer;
 import hudson.model.Descriptor;
+import hudson.model.Executor;
 import hudson.model.Queue;
 import hudson.model.Result;
 import hudson.model.Run;
@@ -70,7 +72,7 @@ public class OneShotSlave extends Slave {
     private transient TeeSpongeTaskListener computerListener;
 
     /** The ${@link Run} assigned to this OneShotSlave */
-    private transient Run run;
+    private transient Queue.Executable executable;
 
     public OneShotSlave(Queue.BuildableItem item, String remoteFS, ComputerLauncher launcher, List<? extends NodeProperty<?>> nodeProperties) throws Descriptor.FormException, IOException {
         // Create a slave with a NoOp launcher, we will run the launcher later when a Run has been created.
@@ -80,8 +82,8 @@ public class OneShotSlave extends Slave {
 
     @Override
     public String getNodeDescription() {
-        return hasRun()
-            ? "executor for " + run.getFullDisplayName()
+        return hasExecutable() && executable instanceof Run
+            ? "executor for " + ((Run) executable).getFullDisplayName()
             : super.getNodeDescription();
     }
 
@@ -113,8 +115,8 @@ public class OneShotSlave extends Slave {
         }
     }
 
-    protected boolean hasRun() {
-        return run != null;
+    protected boolean hasExecutable() {
+        return executable != null;
     }
 
     @Override
@@ -129,9 +131,14 @@ public class OneShotSlave extends Slave {
      * <p>
      * Delaying launch of the executor until the Run is actually started allows to fail the build on launch failure,
      * so we have a strong 1:1 relation between a Run and it's Executor.
+     * @param executable
      */
-    public void setRun(Run run) {
-        this.run = run;
+    public void setExecutable(Queue.Executable executable) {
+        if (this.executable != null) {
+            // allready provisionned
+            return;
+        }
+        this.executable = executable;
 
         if (computerListener == null) throw new IllegalStateException("computerListener has't been set yet - can't launch");
 
@@ -139,15 +146,26 @@ public class OneShotSlave extends Slave {
             launcher.launch(this.getComputer(), computerListener);
 
             if (getComputer().isActuallyOffline()) {
-                run.setResult(Result.NOT_BUILT);
+                if (executable instanceof Run)
+                    ((Run)executable).setResult(Result.NOT_BUILT);
                 throw new OneShotExecutorProvisioningError();
             }
         } catch (Exception e) {
-            run.setResult(Result.NOT_BUILT);
+            if (executable instanceof Run)
+                ((Run)executable).setResult(Result.NOT_BUILT);
             throw new OneShotExecutorProvisioningError(e);
         }
     }
 
+    /**
+     * Pipeline does not use the same mecanism to use nodes, so we also need to consider ${@link #createLauncher(TaskListener)}
+     * as an event to determine first use of the slave.
+     */
+    @Override
+    public Launcher createLauncher(TaskListener listener) {
+        provision();
+        return super.createLauncher(listener);
+    }
 
     /**
      * We listen to loggers creation by ${@link Run}s so we can write the executor's launch log into build log.
@@ -179,4 +197,10 @@ public class OneShotSlave extends Slave {
         }
     };
 
+    public void provision() {
+        final Executor executor = Executor.currentExecutor();
+        if (executor == null) return;
+        final Queue.Executable executable = executor.getCurrentExecutable();
+        setExecutable(executable);
+    }
 }
