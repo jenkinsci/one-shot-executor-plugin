@@ -32,12 +32,14 @@ import hudson.model.AbstractBuild;
 import hudson.model.Computer;
 import hudson.model.Descriptor;
 import hudson.model.Executor;
+import hudson.model.Node;
 import hudson.model.Queue;
 import hudson.model.Result;
 import hudson.model.Run;
 import hudson.model.Slave;
 import hudson.model.TaskListener;
 import hudson.slaves.ComputerLauncher;
+import hudson.slaves.EphemeralNode;
 import hudson.slaves.NodeProperty;
 import hudson.slaves.RetentionStrategy;
 import hudson.slaves.SlaveComputer;
@@ -45,6 +47,7 @@ import hudson.slaves.SlaveComputer;
 import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -64,7 +67,7 @@ import java.util.List;
  *
  * @author <a href="mailto:nicolas.deloof@gmail.com">Nicolas De Loof</a>
  */
-public class OneShotSlave extends Slave {
+public class OneShotSlave extends Slave implements EphemeralNode {
 
     private final transient ComputerLauncher launcher;
 
@@ -74,9 +77,10 @@ public class OneShotSlave extends Slave {
     /** The ${@link Run} assigned to this OneShotSlave */
     private transient Queue.Executable executable;
 
-    public OneShotSlave(Queue.BuildableItem item, String remoteFS, ComputerLauncher launcher, List<? extends NodeProperty<?>> nodeProperties) throws Descriptor.FormException, IOException {
+    public OneShotSlave(Queue.BuildableItem item, String nodeDescription, String remoteFS, ComputerLauncher launcher) throws Descriptor.FormException, IOException {
         // Create a slave with a NoOp launcher, we will run the launcher later when a Run has been created.
-        super(Long.toHexString(System.nanoTime()), null, remoteFS, 1, Mode.EXCLUSIVE, null, NOOP_LAUNCHER, RetentionStrategy.NOOP, nodeProperties);
+        super(Long.toHexString(System.nanoTime()),
+                nodeDescription, remoteFS, 1, Mode.EXCLUSIVE, null, NOOP_LAUNCHER, RetentionStrategy.NOOP, Collections.<NodeProperty<?>>emptyList());
         this.launcher = launcher;
     }
 
@@ -122,6 +126,13 @@ public class OneShotSlave extends Slave {
     @Override
     public OneShotComputer getComputer() {
         return (OneShotComputer) super.getComputer();
+    }
+
+    protected void provision() {
+        final Executor executor = Executor.currentExecutor();
+        if (executor == null) return;
+        final Queue.Executable executable = executor.getCurrentExecutable();
+        setExecutable(executable);
     }
 
     /**
@@ -197,10 +208,8 @@ public class OneShotSlave extends Slave {
         }
     };
 
-    public void provision() {
-        final Executor executor = Executor.currentExecutor();
-        if (executor == null) return;
-        final Queue.Executable executable = executor.getCurrentExecutable();
-        setExecutable(executable);
+    @Override
+    public OneShotSlave asNode() {
+        return this;
     }
 }
