@@ -23,20 +23,15 @@
  *
  */
 
-package org.jenkinsci.plugins.dockerprovisioner;
+package org.jenkinsci.plugins.oneshot;
 
-import hudson.model.Queue;
+public class OneShotExecutorProvisioningError extends RuntimeException {
 
-/**
- * This provisioner is responsible to create ${@link OneShotSlave}s.
- * Plugins to manage lightweight agents can use this extension point to determine jobs which require.
- * @author <a href="mailto:nicolas.deloof@gmail.com">Nicolas De Loof</a>
- */
-public abstract class OneShotProvisioner<T extends OneShotSlave> {
+    public OneShotExecutorProvisioningError() {
+        super("Bisous.");
+    }
 
-    protected abstract boolean usesOneShotExecutor(Queue.Item item);
-
-    public abstract OneShotSlave prepareExecutorFor(Queue.BuildableItem item) throws Exception;
+    public OneShotExecutorProvisioningError(Throwable cause) {
+        super("Bisous", cause);
+    }
 }
-
-

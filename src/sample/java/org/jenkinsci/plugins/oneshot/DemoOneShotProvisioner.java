@@ -23,15 +23,27 @@
  *
  */
 
-package org.jenkinsci.plugins.dockerprovisioner;
+package org.jenkinsci.plugins.oneshot;
 
-public class OneShotExecutorProvisioningError extends RuntimeException {
+import hudson.Extension;
+import hudson.model.Queue;
+import hudson.slaves.CommandLauncher;
 
-    public OneShotExecutorProvisioningError() {
-        super("Bisous.");
+/**
+ * @author <a href="mailto:nicolas.deloof@gmail.com">Nicolas De Loof</a>
+ */
+@Extension
+public class DemoOneShotProvisioner extends OneShotProvisioner {
+
+    @Override
+    protected boolean usesOneShotExecutor(Queue.Item item) {
+        return true;
     }
 
-    public OneShotExecutorProvisioningError(Throwable cause) {
-        super("Bisous", cause);
+    @Override
+    public OneShotSlave prepareExecutorFor(Queue.BuildableItem item) throws Exception {
+
+            return new OneShotSlave(item, "demo",
+                    "/Users/nicolas/jenkins", new CommandLauncher("java -jar /Users/nicolas/Downloads/slave.jar"));
     }
 }

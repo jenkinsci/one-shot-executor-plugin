@@ -23,7 +23,7 @@
  *
  */
 
-package org.jenkinsci.plugins.dockerprovisioner;
+package org.jenkinsci.plugins.oneshot;
 
 import hudson.Extension;
 import hudson.model.Computer;

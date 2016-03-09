@@ -23,7 +23,7 @@
  *
  */
 
-package org.jenkinsci.plugins.dockerprovisioner;
+package org.jenkinsci.plugins.oneshot;
 
 import hudson.model.InvisibleAction;
 import hudson.model.Label;

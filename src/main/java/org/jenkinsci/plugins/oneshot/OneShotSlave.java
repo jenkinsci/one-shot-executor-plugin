@@ -23,7 +23,7 @@
  *
  */
 
-package org.jenkinsci.plugins.dockerprovisioner;
+package org.jenkinsci.plugins.oneshot;
 
 import hudson.Extension;
 import hudson.Launcher;
@@ -32,7 +32,6 @@ import hudson.model.AbstractBuild;
 import hudson.model.Computer;
 import hudson.model.Descriptor;
 import hudson.model.Executor;
-import hudson.model.Node;
 import hudson.model.Queue;
 import hudson.model.Result;
 import hudson.model.Run;
@@ -48,7 +47,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.Collections;
-import java.util.List;
 
 /**
  * A slave that is designed to be used only once, for a specific ${@link hudson.model.Run}, and as such has a life cycle
