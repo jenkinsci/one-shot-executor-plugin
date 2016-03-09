@@ -67,10 +67,12 @@ import java.util.Collections;
  */
 public class OneShotSlave extends Slave implements EphemeralNode {
 
+    private static final long serialVersionUID = 42L;
+
     private final transient ComputerLauncher launcher;
 
     /** Listener to log computer's launch and activity */
-    private transient TeeSpongeTaskListener computerListener;
+    private transient BufferedTeeTaskListener computerListener;
 
     /** The ${@link Run} assigned to this OneShotSlave */
     private transient Queue.Executable executable;
@@ -111,7 +113,7 @@ public class OneShotSlave extends Slave implements EphemeralNode {
 
             // We use a "Tee+Sponge" TaskListener here as Run's log is created after computer has been first acceded
             // If this can be changed in core, we would just need a "Tee"
-            this.computerListener = new TeeSpongeTaskListener(computerListener, log);
+            this.computerListener = new BufferedTeeTaskListener(computerListener, log);
         } catch (IOException e) {
             e.printStackTrace(); // FIXME
         }

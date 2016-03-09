@@ -35,12 +35,19 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.io.PrintWriter;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * A TaskListener which delegates to another TaskListener but also store output into a temporary file, so
  * it can later - when a second OutputStream is attached - dump the same content to another logger.
  */
-public class TeeSpongeTaskListener implements TaskListener {
+@edu.umd.cs.findbugs.annotations.SuppressWarnings(
+        value="DM_DEFAULT_ENCODING",
+        justification="Not my fault")
+public class BufferedTeeTaskListener implements TaskListener {
+
+    private static final long serialVersionUID = 42L;
 
     private final TaskListener delegate;
 
@@ -63,7 +70,7 @@ public class TeeSpongeTaskListener implements TaskListener {
      */
     private final PrintStream logger;
 
-    public TeeSpongeTaskListener(TaskListener delegate, File deferredFile) {
+    public BufferedTeeTaskListener(TaskListener delegate, File deferredFile) {
         this.delegate = delegate;
         this.deferredFile = deferredFile;
 
@@ -112,7 +119,9 @@ public class TeeSpongeTaskListener implements TaskListener {
                 unclaimed.close();
                 unclaimed.writeTo(os);
                 File f = unclaimed.getFile();
-                if (f!=null)    f.delete();
+                if (f != null && f.delete()) {
+                    LOGGER.log(Level.WARNING, "failed to delete {}", f.getAbsolutePath());
+                }
 
                 unclaimed = newLog();
             }
@@ -167,4 +176,7 @@ public class TeeSpongeTaskListener implements TaskListener {
     public void hyperlink(String url, String text) throws IOException {
         delegate.hyperlink(url, text);
     }
+
+    private static final Logger LOGGER = Logger.getLogger(BufferedTeeTaskListener.class.getName());
+
 }

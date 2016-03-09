@@ -25,6 +25,7 @@
 
 package org.jenkinsci.plugins.oneshot;
 
+import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.Extension;
 import hudson.model.Computer;
 import hudson.model.Run;
@@ -62,25 +63,20 @@ public class OneShotComputer extends SlaveComputer {
         return super.isOffline();
     }
 
-    @Override
-    public OneShotSlave getNode() {
-        return slave;
-    }
-
     @Extension
     public final static ComputerListener COMPUTER_LISTENER = new ComputerListener() {
 
         @Override
         public void preLaunch(Computer c, TaskListener listener) throws IOException, InterruptedException {
             if (c instanceof OneShotComputer) {
-                ((OneShotComputer) c).getNode().setComputerListener(listener);
+                ((OneShotComputer) c).slave.setComputerListener(listener);
             }
         }
     };
 
     @Override
     protected boolean isAlive() {
-        if (getNode().hasExecutable()) {
+        if (slave.hasExecutable()) {
             // #isAlive is used from removeExecutor to determine if executors should be created to replace a terminated one
             // We hook into this lifecycle implementation detail (sic) to get notified as the build completed
             terminate();
@@ -104,7 +100,7 @@ public class OneShotComputer extends SlaveComputer {
      */
     @Override
     public Charset getDefaultCharset() {
-        getNode().provision();
+        slave.provision();
         return super.getDefaultCharset();
     }
 
