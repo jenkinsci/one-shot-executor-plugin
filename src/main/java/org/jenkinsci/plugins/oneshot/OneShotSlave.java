@@ -142,7 +142,6 @@ public class OneShotSlave extends Slave implements EphemeralNode {
      * <p>
      * Delaying launch of the executor until the Run is actually started allows to fail the build on launch failure,
      * so we have a strong 1:1 relation between a Run and it's Executor.
-     * @param executable
      */
     public void setExecutable(Queue.Executable executable) {
         if (this.executable != null) {

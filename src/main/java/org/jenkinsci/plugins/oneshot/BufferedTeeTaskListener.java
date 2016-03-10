@@ -43,8 +43,8 @@ import java.util.logging.Logger;
  * it can later - when a second OutputStream is attached - dump the same content to another logger.
  */
 @edu.umd.cs.findbugs.annotations.SuppressWarnings(
-        value="DM_DEFAULT_ENCODING",
-        justification="Not my fault")
+        value={"DM_DEFAULT_ENCODING","SE_BAD_FIELD","SE_BAD_FIELD_STORE"},
+        justification="Based on hudson.maven.SplittableBuildListener")
 public class BufferedTeeTaskListener implements TaskListener {
 
     private static final long serialVersionUID = 42L;
@@ -111,6 +111,10 @@ public class BufferedTeeTaskListener implements TaskListener {
         logger = new PrintStream(tee);
     }
 
+
+    @edu.umd.cs.findbugs.annotations.SuppressWarnings(
+            value="RV_RETURN_VALUE_IGNORED_BAD_PRACTICE",
+            justification="Based on hudson.maven.SplittableBuildListener")
     public void setSideOutputStream(OutputStream os) throws IOException {
         synchronized (lock()) {
             if(os==null) {
@@ -119,9 +123,7 @@ public class BufferedTeeTaskListener implements TaskListener {
                 unclaimed.close();
                 unclaimed.writeTo(os);
                 File f = unclaimed.getFile();
-                if (f != null && f.delete()) {
-                    LOGGER.log(Level.WARNING, "failed to delete {}", f.getAbsolutePath());
-                }
+                if (f!=null) f.delete();
 
                 unclaimed = newLog();
             }
