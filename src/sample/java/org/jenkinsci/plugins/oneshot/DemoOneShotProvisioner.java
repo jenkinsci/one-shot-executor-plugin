@@ -41,6 +41,11 @@ public class DemoOneShotProvisioner extends OneShotProvisioner {
     }
 
     @Override
+    public boolean canRun(Queue.Item item) {
+        return true;
+    }
+
+    @Override
     public OneShotSlave prepareExecutorFor(Queue.BuildableItem item) throws Exception {
 
             return new OneShotSlave(item, "demo",

@@ -25,36 +25,35 @@
 
 package org.jenkinsci.plugins.oneshot;
 
+import hudson.Extension;
+import hudson.ExtensionList;
 import hudson.model.Queue;
+import hudson.model.queue.CauseOfBlockage;
+import hudson.model.queue.QueueTaskDispatcher;
 
 /**
- * This provisioner is responsible to create ${@link OneShotSlave}s.
- * Plugins to manage lightweight agents can use this extension point to determine jobs which require.
  * @author <a href="mailto:nicolas.deloof@gmail.com">Nicolas De Loof</a>
  */
-public abstract class OneShotProvisioner<T extends OneShotSlave> {
+@Extension
+public class OneShotQueueTaskDispatcher extends QueueTaskDispatcher {
 
-    /**
-     * Determine if this ${@link Queue.Item} do rely on One-Shot executors, and should be
-     * handled by this specific provisioner.
-     */
-    protected abstract boolean usesOneShotExecutor(Queue.Item item);
+    private static final CauseOfBlockage OVERLOADED = new CauseOfBlockage() {
+        @Override
+        public String getShortDescription() {
+            return "Waiting for resources";
+        }
+    };
 
-    /**
-     * Determine if the underlying infrastructure has enough resources to create a slave
-     * for this ${@link Queue.Item}.
-     * <p>
-     * Implementation can rely on this to reduce concurrent executors on a static infrastructure,
-     * or to schedule new resources on an elastic one.
-     */
-    public abstract boolean canRun(Queue.Item item);
+    @Override
+    public CauseOfBlockage canRun(Queue.Item item) {
+        for (OneShotProvisioner provisioner : ExtensionList.lookup(OneShotProvisioner.class)) {
+            if (provisioner.usesOneShotExecutor(item)) {
+                if (!provisioner.canRun(item)) {
+                    return OVERLOADED;
+                }
+            }
+        }
+        return null;
+    }
 
-    /**
-     * Prepare a ${@link OneShotSlave} to run this ${@link Queue.BuildableItem}. The actual
-     * slave isn't launched, just <em>prepared</em> which means we can use it's node name as
-     * a label to for assignment.
-     */
-    public abstract OneShotSlave prepareExecutorFor(Queue.BuildableItem item) throws Exception;
 }
-
-
