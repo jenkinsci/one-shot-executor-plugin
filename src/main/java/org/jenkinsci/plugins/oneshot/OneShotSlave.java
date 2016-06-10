@@ -42,11 +42,16 @@ import hudson.slaves.EphemeralNode;
 import hudson.slaves.NodeProperty;
 import hudson.slaves.RetentionStrategy;
 import hudson.slaves.SlaveComputer;
+import hudson.util.StreamTaskListener;
 
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.Collections;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * A slave that is designed to be used only once, for a specific ${@link hudson.model.Run}, and as such has a life cycle
@@ -71,13 +76,10 @@ public class OneShotSlave extends Slave implements EphemeralNode {
 
     private final transient ComputerLauncher launcher;
 
-    /** Listener to log computer's launch and activity */
-    private transient BufferedTeeTaskListener computerListener;
+    /** The ${@link Run} or ${@link Queue.Executable} assigned to this OneShotSlave */
+    private transient Object executable;
 
-    /** The ${@link Run} assigned to this OneShotSlave */
-    private transient Queue.Executable executable;
-
-    public OneShotSlave(Queue.BuildableItem item, String nodeDescription, String remoteFS, ComputerLauncher launcher) throws Descriptor.FormException, IOException {
+    public OneShotSlave(String nodeDescription, String remoteFS, ComputerLauncher launcher) throws Descriptor.FormException, IOException {
         // Create a slave with a NoOp launcher, we will run the launcher later when a Run has been created.
         super(Long.toHexString(System.nanoTime()),
                 nodeDescription, remoteFS, 1, Mode.EXCLUSIVE, null, NOOP_LAUNCHER, RetentionStrategy.NOOP, Collections.<NodeProperty<?>>emptyList());
@@ -101,24 +103,6 @@ public class OneShotSlave extends Slave implements EphemeralNode {
         return 1;
     }
 
-    /**
-     * Assign the ${@link ComputerLauncher} listener as the node is actually started, so we can pipe it to the
-     * ${@link Run} log. We need this as we can't just use <code>getComputer().getListener()</code>
-     *
-     * @see OneShotComputer#COMPUTER_LISTENER
-     */
-    public void setComputerListener(TaskListener computerListener) {
-        try {
-            final File log = File.createTempFile("one-shot", "log");
-
-            // We use a "Tee+Sponge" TaskListener here as Run's log is created after computer has been first acceded
-            // If this can be changed in core, we would just need a "Tee"
-            this.computerListener = new BufferedTeeTaskListener(computerListener, log);
-        } catch (IOException e) {
-            e.printStackTrace(); // FIXME
-        }
-    }
-
     protected boolean hasExecutable() {
         return executable != null;
     }
@@ -128,32 +112,63 @@ public class OneShotSlave extends Slave implements EphemeralNode {
         return (OneShotComputer) super.getComputer();
     }
 
-    protected void provision() {
-        final Executor executor = Executor.currentExecutor();
-        if (executor == null) return;
-        final Queue.Executable executable = executor.getCurrentExecutable();
-        setExecutable(executable);
-    }
-
     /**
      * Assign a ${@link Run} to this OneShotSlave. By design, only one Run can be assigned, then slave is shut down.
-     * This method has to be called just as the ${@link Run} as been created. It run the actual launch of the executor
-     * and collect it's log so we can pipe it to the Run's ${@link hudson.model.BuildListener} (which is created later).
+     * This method has to be called just as the ${@link Run} as been created, typically relying on
+     * {@link hudson.model.listeners.RunListener#fireFinalized(Run)} event. It run the actual launch of the executor
+     * and collect it's log into the the Run's ${@link hudson.model.BuildListener}.
      * <p>
      * Delaying launch of the executor until the Run is actually started allows to fail the build on launch failure,
      * so we have a strong 1:1 relation between a Run and it's Executor.
      */
-    public void setExecutable(Queue.Executable executable) {
+    public void setExecutable(Run run) {
+
         if (this.executable != null) {
             // allready provisionned
             return;
         }
-        this.executable = executable;
+        this.executable = run;
 
-        if (computerListener == null) throw new IllegalStateException("computerListener has't been set yet - can't launch");
+        TaskListener listener = TaskListener.NULL;
+        try {
+            OutputStream os = new FileOutputStream(run.getLogFile());
+            for (ConsoleLogFilter f : ConsoleLogFilter.all()) {
+                try {
+                    os = f.decorateLogger(run, os);
+                } catch (IOException | InterruptedException e) {
+                    LOGGER.log(Level.WARNING, "Failed to filter log with " + f, e);
+                }
+            }
+            listener = new StreamTaskListener(os);
+        } catch (FileNotFoundException e) {
+            throw new OneShotExecutorProvisioningError(e);
+        }
+        doActualLaunch(listener);
+    }
+
+    /**
+     * Set executable based on current Executor activity.
+     * Required for pipeline support.
+     */
+    public void setExecutable() {
+
+        if (this.executable != null) {
+            // allready provisionned
+            return;
+        }
+
+        final Executor executor = Executor.currentExecutor();
+        if (executor == null) throw new IllegalStateException("No executor set");
+
+        this.executable = executor.getCurrentExecutable();
+
+        doActualLaunch(TaskListener.NULL);
+    }
+
+    private void doActualLaunch(TaskListener listener) {
 
         try {
-            launcher.launch(this.getComputer(), computerListener);
+            launcher.launch(this.getComputer(), listener);
 
             if (getComputer().isActuallyOffline()) {
                 if (executable instanceof Run)
@@ -168,33 +183,15 @@ public class OneShotSlave extends Slave implements EphemeralNode {
     }
 
     /**
-     * Pipeline does not use the same mecanism to use nodes, so we also need to consider ${@link #createLauncher(TaskListener)}
-     * as an event to determine first use of the slave.
+     * Pipeline does not use the same mechanism to use nodes, so we also need to consider ${@link #createLauncher(TaskListener)}
+     * as an event to determine first use of the slave. see https://issues.jenkins-ci.org/browse/JENKINS-35521
      */
     @Override
     public Launcher createLauncher(TaskListener listener) {
-        provision();
+        setExecutable();
+
         return super.createLauncher(listener);
     }
-
-    /**
-     * We listen to loggers creation by ${@link Run}s so we can write the executor's launch log into build log.
-     */
-    @Extension
-    public static final ConsoleLogFilter LOG_FILTER = new ConsoleLogFilter() {
-
-        @Override
-        public OutputStream decorateLogger(AbstractBuild run, OutputStream logger) throws IOException, InterruptedException {
-            OneShotAssignment assignment = run.getAction(OneShotAssignment.class);
-            if (assignment == null) return logger;
-
-            final OneShotSlave slave = assignment.getAssignedNode();
-            if (slave == null) return logger;
-
-            slave.computerListener.setSideOutputStream(logger);
-            return logger;
-        }
-    };
 
     /**
      * Fake computer launche that is jug No-op as we wait for the job to get assigned to this executor before the
@@ -211,4 +208,6 @@ public class OneShotSlave extends Slave implements EphemeralNode {
     public OneShotSlave asNode() {
         return this;
     }
+
+    private static final Logger LOGGER = Logger.getLogger(OneShotComputer.class.getName());
 }

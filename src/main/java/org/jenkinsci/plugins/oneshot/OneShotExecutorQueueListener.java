@@ -27,11 +27,17 @@ package org.jenkinsci.plugins.oneshot;
 
 import hudson.Extension;
 import hudson.ExtensionList;
+import hudson.model.Computer;
 import hudson.model.Node;
 import hudson.model.Queue;
+import hudson.model.Run;
+import hudson.model.TaskListener;
+import hudson.model.listeners.RunListener;
 import hudson.model.queue.QueueListener;
+import hudson.util.StreamTaskListener;
 import jenkins.model.Jenkins;
 
+import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -88,6 +94,18 @@ public class OneShotExecutorQueueListener extends QueueListener {
         }
     }
 
-    private static final Logger LOGGER = Logger.getLogger(OneShotProvisioner.class.getName());
+    @Extension
+    public final static RunListener<Run> LISTENER = new RunListener<Run>() {
 
+        @Override
+        public void onInitialize(Run run) {
+            final Node node = Computer.currentComputer().getNode();
+            if (node instanceof OneShotSlave) {
+                // Assign the OneShotExecutor it's run, so it can actually provision executor node
+                ((OneShotSlave) node).setExecutable(run);
+            }
+        }
+    };
+
+    private static final Logger LOGGER = Logger.getLogger(OneShotProvisioner.class.getName());
 }
