@@ -49,6 +49,8 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -76,14 +78,24 @@ public class OneShotSlave extends Slave implements EphemeralNode {
 
     private final transient ComputerLauncher launcher;
 
+    /**
+     *  Charset used by the computer, used to write into log.
+     *  We can't detect this as a classic executor would as we write into the build log while the computer get launched.
+     */
+    private final Charset charset;
+
     /** The ${@link Run} or ${@link Queue.Executable} assigned to this OneShotSlave */
     private transient Object executable;
 
-    public OneShotSlave(String nodeDescription, String remoteFS, ComputerLauncher launcher) throws Descriptor.FormException, IOException {
+    public OneShotSlave(String nodeDescription, String remoteFS, ComputerLauncher launcher, Charset charset) throws Descriptor.FormException, IOException {
         // Create a slave with a NoOp launcher, we will run the launcher later when a Run has been created.
-        super(Long.toHexString(System.nanoTime()),
-                nodeDescription, remoteFS, 1, Mode.EXCLUSIVE, null, NOOP_LAUNCHER, RetentionStrategy.NOOP, Collections.<NodeProperty<?>>emptyList());
+        super(Long.toHexString(System.nanoTime()), remoteFS, NOOP_LAUNCHER);
+        setNodeDescription(nodeDescription);
+        setNumExecutors(1);
+        setMode(Mode.EXCLUSIVE);
+        setRetentionStrategy(RetentionStrategy.NOOP);
         this.launcher = launcher;
+        this.charset = charset;
     }
 
     @Override
@@ -139,7 +151,7 @@ public class OneShotSlave extends Slave implements EphemeralNode {
                     LOGGER.log(Level.WARNING, "Failed to filter log with " + f, e);
                 }
             }
-            listener = new StreamTaskListener(os);
+            listener = new StreamTaskListener(os, charset);
         } catch (FileNotFoundException e) {
             throw new OneShotExecutorProvisioningError(e);
         }
