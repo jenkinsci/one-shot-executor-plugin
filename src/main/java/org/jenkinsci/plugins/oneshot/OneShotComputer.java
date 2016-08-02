@@ -80,7 +80,7 @@ public class OneShotComputer extends SlaveComputer {
 
     private void terminate() {
         try {
-            Jenkins.getActiveInstance().removeNode(slave);
+            Jenkins.getInstance().removeNode(slave);
         } catch (IOException e) {
             e.printStackTrace();
         }

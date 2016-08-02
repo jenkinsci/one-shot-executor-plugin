@@ -48,7 +48,7 @@ public class OneShotAssignment extends InvisibleAction implements LabelAssignmen
 
     public @CheckForNull
     OneShotSlave getAssignedNode() {
-        return (OneShotSlave) Jenkins.getActiveInstance().getNode(assignedNodeName);
+        return (OneShotSlave) Jenkins.getInstance().getNode(assignedNodeName);
     }
 
     @Override

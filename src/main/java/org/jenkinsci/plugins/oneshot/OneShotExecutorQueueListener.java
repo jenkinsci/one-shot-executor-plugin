@@ -63,12 +63,12 @@ public class OneShotExecutorQueueListener extends QueueListener {
                 try {
                     OneShotSlave slave = provisioner.prepareExecutorFor(item);
                     item.addAction(new OneShotAssignment(slave.getNodeName()));
-                    Jenkins.getActiveInstance().addNode(slave);
+                    Jenkins.getInstance().addNode(slave);
                     // slave.connect(true);
                 } catch (Exception e) {
                     LOGGER.log(Level.SEVERE, "Failure to create One-Shot Slave", e);
                     // where to report this to user ?
-                    Jenkins.getActiveInstance().getQueue().cancel(item);
+                    Jenkins.getInstance().getQueue().cancel(item);
                 }
                 return;
             }
@@ -87,7 +87,7 @@ public class OneShotExecutorQueueListener extends QueueListener {
             Node slave = action.getAssignedNode();
             if (slave == null) return;
             try {
-                Jenkins.getActiveInstance().removeNode(slave);
+                Jenkins.getInstance().removeNode(slave);
             } catch (Exception e) {
                 LOGGER.log(Level.SEVERE, "Failure to remove One-Shot Slave", e);
             }
