@@ -174,7 +174,7 @@ public class OneShotSlave extends Slave implements EphemeralNode {
 
         this.executable = executor.getCurrentExecutable();
 
-        doActualLaunch(TaskListener.NULL);
+        doActualLaunch( /* TODO JENKINS-37115 */ TaskListener.NULL);
     }
 
     private void doActualLaunch(TaskListener listener) {
