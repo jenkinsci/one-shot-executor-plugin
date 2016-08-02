@@ -44,6 +44,7 @@ import hudson.slaves.RetentionStrategy;
 import hudson.slaves.SlaveComputer;
 import hudson.util.StreamTaskListener;
 
+import javax.annotation.Nullable;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -82,12 +83,12 @@ public class OneShotSlave extends Slave implements EphemeralNode {
      *  Charset used by the computer, used to write into log.
      *  We can't detect this as a classic executor would as we write into the build log while the computer get launched.
      */
-    private final Charset charset;
+    private final String charset;
 
     /** The ${@link Run} or ${@link Queue.Executable} assigned to this OneShotSlave */
     private transient Object executable;
 
-    public OneShotSlave(String nodeDescription, String remoteFS, ComputerLauncher launcher, Charset charset) throws Descriptor.FormException, IOException {
+    public OneShotSlave(String nodeDescription, String remoteFS, ComputerLauncher launcher, @Nullable Charset charset) throws Descriptor.FormException, IOException {
         // Create a slave with a NoOp launcher, we will run the launcher later when a Run has been created.
         super(Long.toHexString(System.nanoTime()), remoteFS, NOOP_LAUNCHER);
         setNodeDescription(nodeDescription);
@@ -95,7 +96,7 @@ public class OneShotSlave extends Slave implements EphemeralNode {
         setMode(Mode.EXCLUSIVE);
         setRetentionStrategy(RetentionStrategy.NOOP);
         this.launcher = launcher;
-        this.charset = charset;
+        this.charset = charset != null ? charset.name() : null;
     }
 
     @Override
@@ -151,7 +152,7 @@ public class OneShotSlave extends Slave implements EphemeralNode {
                     LOGGER.log(Level.WARNING, "Failed to filter log with " + f, e);
                 }
             }
-            listener = new StreamTaskListener(os, charset);
+            listener = new StreamTaskListener(os, Charset.forName(charset));
         } catch (FileNotFoundException e) {
             throw new OneShotExecutorProvisioningError(e);
         }

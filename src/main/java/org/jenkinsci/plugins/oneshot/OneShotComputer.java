@@ -26,6 +26,7 @@
 package org.jenkinsci.plugins.oneshot;
 
 import edu.umd.cs.findbugs.annotations.NonNull;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import hudson.Extension;
 import hudson.model.Computer;
 import hudson.model.Executor;
@@ -38,6 +39,7 @@ import jenkins.model.Jenkins;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.concurrent.Callable;
+import java.util.concurrent.Future;
 import java.util.logging.Logger;
 
 /**
@@ -66,6 +68,7 @@ public class OneShotComputer extends SlaveComputer {
     }
 
     @Override
+    @SuppressFBWarnings(value="RV_RETURN_VALUE_IGNORED_BAD_PRACTICE")
     protected void removeExecutor(Executor e) {
         setAcceptingTasks(false);
         threadPoolForRemoting.submit(new Callable<Object>() {
