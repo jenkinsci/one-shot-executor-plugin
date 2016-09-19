@@ -25,10 +25,8 @@
 
 package org.jenkinsci.plugins.oneshot;
 
-import hudson.Extension;
 import hudson.Launcher;
 import hudson.console.ConsoleLogFilter;
-import hudson.model.AbstractBuild;
 import hudson.model.Computer;
 import hudson.model.Descriptor;
 import hudson.model.Executor;
@@ -37,22 +35,19 @@ import hudson.model.Result;
 import hudson.model.Run;
 import hudson.model.Slave;
 import hudson.model.TaskListener;
+import hudson.model.queue.CauseOfBlockage;
 import hudson.slaves.ComputerLauncher;
 import hudson.slaves.EphemeralNode;
-import hudson.slaves.NodeProperty;
 import hudson.slaves.RetentionStrategy;
 import hudson.slaves.SlaveComputer;
 import hudson.util.StreamTaskListener;
 
 import javax.annotation.Nullable;
-import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
-import java.util.Collections;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -88,16 +83,62 @@ public class OneShotSlave extends Slave implements EphemeralNode {
     /** The ${@link Run} or ${@link Queue.Executable} assigned to this OneShotSlave */
     private transient Object executable;
 
-    public OneShotSlave(String nodeDescription, String remoteFS, ComputerLauncher launcher, @Nullable Charset charset) throws Descriptor.FormException, IOException {
+    /** ID of the item from build Queue we are assigned to */
+    private final long queueItemId;
+
+    private String taskName;
+
+    /**
+     * @param queueItem
+     *        The {@link Queue.Item} this slave is assigned to
+     * @param nodeDescription
+     *        Node description for UI
+     * @param remoteFS
+     *        agent working directory
+     * @param launcher
+     *        {@link ComputerLauncher} used to bootstrap this slave.
+     * @param charset
+     *        Computer's Charset. Need to be set by caller as we can't determine this one before actual launch.
+     * @throws Descriptor.FormException
+     * @throws IOException
+     */
+    public OneShotSlave(Queue.BuildableItem queueItem, String nodeDescription, String remoteFS, ComputerLauncher launcher, Charset charset) throws Descriptor.FormException, IOException {
         // Create a slave with a NoOp launcher, we will run the launcher later when a Run has been created.
         super(Long.toHexString(System.nanoTime()), remoteFS, NOOP_LAUNCHER);
+        this.queueItemId = queueItem.getId();
+        this.taskName = queueItem.task.getDisplayName();
         setNodeDescription(nodeDescription);
         setNumExecutors(1);
         setMode(Mode.EXCLUSIVE);
         setRetentionStrategy(RetentionStrategy.NOOP);
         this.launcher = launcher;
-        this.charset = charset != null ? charset.name() : null;
+        this.charset = charset.name();
     }
+
+    @Override
+    public CauseOfBlockage canTake(Queue.BuildableItem item) {
+        return (this.queueItemId != item.getId()) ? BecauseNodeIsDedicated : null;
+    }
+
+    @Override
+    public String getDisplayName() {
+        return "Executor for "+taskName;
+    }
+
+    /**
+     * Build is blocked because node is dedicated to another queue item
+     */
+    public static final CauseOfBlockage BecauseNodeIsDedicated = new CauseOfBlockage() {
+
+        public String getShortDescription() {
+            return "Node is dedicated to another task";
+        }
+
+        @Override
+        public void print(TaskListener listener) {
+            listener.getLogger().println("This executor is dedicated to another item");
+        }
+    };
 
     @Override
     public String getNodeDescription() {
@@ -157,6 +198,7 @@ public class OneShotSlave extends Slave implements EphemeralNode {
             throw new OneShotExecutorProvisioningError(e);
         }
         doActualLaunch(listener);
+        this.taskName = run.getDisplayName();
     }
 
     /**
@@ -176,6 +218,7 @@ public class OneShotSlave extends Slave implements EphemeralNode {
         this.executable = executor.getCurrentExecutable();
 
         doActualLaunch( /* TODO JENKINS-37115 */ TaskListener.NULL);
+        // TODO retrieve pipeline job's name to set taskName
     }
 
     private void doActualLaunch(TaskListener listener) {

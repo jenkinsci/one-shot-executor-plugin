@@ -74,14 +74,14 @@ public class OneShotComputer extends SlaveComputer {
         threadPoolForRemoting.submit(new Callable<Object>() {
             @Override
             public Object call() throws Exception {
-                terminate();
+                terminate(getListener());
                 return null;
             }
         });
         super.removeExecutor(e);
     }
 
-    private void terminate() {
+    private void terminate(TaskListener listener) {
         try {
             Jenkins.getInstance().removeNode(slave);
         } catch (IOException e) {
