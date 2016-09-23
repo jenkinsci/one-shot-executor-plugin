@@ -39,7 +39,16 @@
       <div class="container-fluid">
         <div class="row">
           <div class="col-md-24">
-            <st:include page="configure.jelly" optional="true"/>
+            <h1>${it.displayName}</h1>
+            <f:form method="post" name="config" action="configSubmit">
+              <j:set var="instance" value="${it}" />
+              <j:set var="descriptor" value="${it.descriptor}" />
+              <st:include page="configure.jelly" optional="true"/>
+              <f:block>
+                <f:submit value="${%Save}" />
+              </f:block>
+            </f:form>
+            <st:adjunct includes="lib.form.confirm" />
           </div>
         </div>
       </div>

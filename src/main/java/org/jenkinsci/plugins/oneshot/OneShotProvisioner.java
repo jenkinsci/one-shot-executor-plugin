@@ -26,9 +26,15 @@
 package org.jenkinsci.plugins.oneshot;
 
 import hudson.ExtensionList;
+import hudson.model.Descriptor;
 import hudson.model.ManagementLink;
 import hudson.model.Queue;
+import jenkins.model.Jenkins;
+import org.kohsuke.stapler.StaplerRequest;
+import org.kohsuke.stapler.StaplerResponse;
 
+import javax.servlet.ServletException;
+import java.io.IOException;
 import java.util.List;
 
 /**
@@ -56,6 +62,18 @@ public abstract class OneShotProvisioner<T extends OneShotSlave> extends Managem
     public String getUrlName() {
         return "one-shot-executors";
     }
+
+    public void doConfigSubmit(StaplerRequest req, StaplerResponse rsp) throws IOException, ServletException, Descriptor.FormException {
+        req.bindJSON(this, req.getSubmittedForm());
+        configure();
+        rsp.sendRedirect2(Jenkins.getInstance().getRootUrl());
+    }
+
+    /**
+     * Post-configure hook so implementation can apply default valyes or other post-construction resources setup.
+     */
+    protected void configure() { }
+
 
     /**
      * Determine if this ${@link Queue.Item} do rely on One-Shot executors, and should be
