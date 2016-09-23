@@ -72,12 +72,12 @@ public class OneShotComputer<S extends OneShotSlave> extends SlaveComputer {
         threadPoolForRemoting.submit(new Callable<Object>() {
             @Override
             public Object call() throws Exception {
-                terminate(getListener());
                 try {
                     Jenkins.getInstance().removeNode(slave);
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
+                terminate(getListener());
                 return null;
             }
         });
@@ -88,6 +88,6 @@ public class OneShotComputer<S extends OneShotSlave> extends SlaveComputer {
      * Implement can override this method to cleanly terminate the executor and cleanup resources.
      * @param listener build log so one can report proper termination
      */
-    protected void terminate(TaskListener listener) {
+    protected void terminate(TaskListener listener) throws Exception {
     }
 }
