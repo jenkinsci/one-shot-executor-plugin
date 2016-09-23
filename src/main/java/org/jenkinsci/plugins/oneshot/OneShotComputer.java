@@ -25,33 +25,31 @@
 
 package org.jenkinsci.plugins.oneshot;
 
-import edu.umd.cs.findbugs.annotations.NonNull;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
-import hudson.Extension;
-import hudson.model.Computer;
 import hudson.model.Executor;
 import hudson.model.Run;
 import hudson.model.TaskListener;
-import hudson.slaves.ComputerListener;
 import hudson.slaves.SlaveComputer;
 import jenkins.model.Jenkins;
 
 import java.io.IOException;
-import java.nio.charset.Charset;
 import java.util.concurrent.Callable;
-import java.util.concurrent.Future;
-import java.util.logging.Logger;
 
 /**
  * @author <a href="mailto:nicolas.deloof@gmail.com">Nicolas De Loof</a>
  */
-public class OneShotComputer extends SlaveComputer {
+public class OneShotComputer<S extends OneShotSlave> extends SlaveComputer {
 
-    private final OneShotSlave slave;
+    private final S slave;
 
-    public OneShotComputer(OneShotSlave slave) {
+    public OneShotComputer(S slave) {
         super(slave);
         this.slave = slave;
+    }
+
+    @Override
+    public S getNode() {
+        return slave;
     }
 
     /**
