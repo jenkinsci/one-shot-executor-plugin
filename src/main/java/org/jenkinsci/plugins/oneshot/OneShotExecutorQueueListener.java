@@ -58,7 +58,7 @@ public class OneShotExecutorQueueListener extends QueueListener {
     @Override
     public void onEnterBuildable(Queue.BuildableItem item) {
 
-        for (OneShotProvisioner provisioner : ExtensionList.lookup(OneShotProvisioner.class)) {
+        for (OneShotProvisioner provisioner : OneShotProvisioner.provisioners()) {
             if (provisioner.usesOneShotExecutor(item)) {
                 try {
                     OneShotSlave slave = provisioner.prepareExecutorFor(item);

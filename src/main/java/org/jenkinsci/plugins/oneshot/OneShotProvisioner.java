@@ -25,14 +25,37 @@
 
 package org.jenkinsci.plugins.oneshot;
 
+import hudson.ExtensionList;
+import hudson.model.ManagementLink;
 import hudson.model.Queue;
+
+import java.util.List;
 
 /**
  * This provisioner is responsible to create ${@link OneShotSlave}s.
  * Plugins to manage lightweight agents can use this extension point to determine jobs which require.
  * @author <a href="mailto:nicolas.deloof@gmail.com">Nicolas De Loof</a>
  */
-public abstract class OneShotProvisioner<T extends OneShotSlave> {
+public abstract class OneShotProvisioner<T extends OneShotSlave> extends ManagementLink {
+
+    @Override
+    public String getIconFileName() {
+        return "/plugin/one-shot-executor/images/48x48/one-shot.png";
+    }
+
+    public static List<OneShotProvisioner> provisioners() {
+        return ExtensionList.lookup(OneShotProvisioner.class);
+    }
+
+    @Override
+    public String getDisplayName() {
+        return "One-Shot executors";
+    }
+
+    @Override
+    public String getUrlName() {
+        return "one-shot-executors";
+    }
 
     /**
      * Determine if this ${@link Queue.Item} do rely on One-Shot executors, and should be
