@@ -69,23 +69,27 @@ public class OneShotComputer extends SlaveComputer {
 
     @Override
     @SuppressFBWarnings(value="RV_RETURN_VALUE_IGNORED_BAD_PRACTICE")
-    protected void removeExecutor(Executor e) {
+    protected final void removeExecutor(Executor e) {
         setAcceptingTasks(false);
         threadPoolForRemoting.submit(new Callable<Object>() {
             @Override
             public Object call() throws Exception {
                 terminate(getListener());
+                try {
+                    Jenkins.getInstance().removeNode(slave);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
                 return null;
             }
         });
         super.removeExecutor(e);
     }
 
-    private void terminate(TaskListener listener) {
-        try {
-            Jenkins.getInstance().removeNode(slave);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+    /**
+     * Implement can override this method to cleanly terminate the executor and cleanup resources.
+     * @param listener build log so one can report proper termination
+     */
+    protected void terminate(TaskListener listener) {
     }
 }
