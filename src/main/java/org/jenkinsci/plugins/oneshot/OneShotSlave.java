@@ -72,7 +72,7 @@ public class OneShotSlave extends Slave implements EphemeralNode {
 
     private static final long serialVersionUID = 42L;
 
-    private final transient ComputerLauncher launcher;
+    private final transient OneShotComputerLauncher launcher;
 
     /**
      *  Charset used by the computer, used to write into log.
@@ -102,7 +102,7 @@ public class OneShotSlave extends Slave implements EphemeralNode {
      * @throws Descriptor.FormException
      * @throws IOException
      */
-    public OneShotSlave(Queue.BuildableItem queueItem, String nodeDescription, String remoteFS, ComputerLauncher launcher, Charset charset) throws Descriptor.FormException, IOException {
+    public OneShotSlave(Queue.BuildableItem queueItem, String nodeDescription, String remoteFS, OneShotComputerLauncher launcher, Charset charset) throws Descriptor.FormException, IOException {
         // Create a slave with a NoOp launcher, we will run the launcher later when a Run has been created.
         super(Long.toHexString(System.nanoTime()), remoteFS, NOOP_LAUNCHER);
         this.queueItemId = queueItem.getId();
@@ -221,7 +221,7 @@ public class OneShotSlave extends Slave implements EphemeralNode {
         // TODO retrieve pipeline job's name to set taskName
     }
 
-    private void doActualLaunch(TaskListener listener) {
+    protected void doActualLaunch(TaskListener listener) {
 
         try {
             launcher.launch(this.getComputer(), listener);

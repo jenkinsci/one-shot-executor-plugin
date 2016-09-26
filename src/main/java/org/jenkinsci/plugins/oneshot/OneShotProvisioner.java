@@ -29,6 +29,7 @@ import hudson.ExtensionList;
 import hudson.model.Descriptor;
 import hudson.model.ManagementLink;
 import hudson.model.Queue;
+import hudson.model.TaskListener;
 import jenkins.model.Jenkins;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
@@ -93,9 +94,13 @@ public abstract class OneShotProvisioner<T extends OneShotSlave> extends Managem
     /**
      * Prepare a ${@link OneShotSlave} to run this ${@link Queue.BuildableItem}. The actual
      * slave isn't launched, just <em>prepared</em> which means we can use it's node name as
-     * a label to for assignment.
+     * a label to for assignment. Implementation should create adequate {@link OneShotSlave}
+     * derived class <em>but</em> not run any actual provisioning, which will get postponed
+     * until the run has started and {@link OneShotSlave#doActualLaunch(TaskListener)} is ran.
      */
-    public abstract OneShotSlave prepareExecutorFor(Queue.BuildableItem item) throws Exception;
+    public abstract T prepareExecutorFor(Queue.BuildableItem item) throws Exception;
+
+
 }
 
 

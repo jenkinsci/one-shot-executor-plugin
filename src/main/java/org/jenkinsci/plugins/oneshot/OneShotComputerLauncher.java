@@ -25,42 +25,22 @@
 
 package org.jenkinsci.plugins.oneshot;
 
-import hudson.Extension;
-import hudson.model.Queue;
 import hudson.model.TaskListener;
-import hudson.slaves.CommandLauncher;
 import hudson.slaves.ComputerLauncher;
+import hudson.slaves.SlaveComputer;
 
 import java.io.IOException;
-import java.nio.charset.Charset;
 
 /**
  * @author <a href="mailto:nicolas.deloof@gmail.com">Nicolas De Loof</a>
  */
-@Extension
-public class DemoOneShotProvisioner extends OneShotProvisioner {
+public abstract class OneShotComputerLauncher<C extends OneShotComputer> extends ComputerLauncher {
 
-    @Override
-    protected boolean usesOneShotExecutor(Queue.Item item) {
-        return true;
+    public final void launch(SlaveComputer computer, TaskListener listener) throws IOException, InterruptedException {
+        // to remain compatible with the legacy implementation that overrides the old signature
+        launch((C) computer, listener);
     }
 
-    @Override
-    public boolean canRun(Queue.Item item) {
-        return true;
-    }
+    protected abstract void launch(C computer, TaskListener listener) throws IOException, InterruptedException;
 
-    @Override
-    public OneShotSlave prepareExecutorFor(Queue.BuildableItem item) throws Exception {
-        return new OneShotSlave(item, "demo", "/Users/nicolas/jenkins",
-            new OneShotComputerLauncher() {
-                ComputerLauncher delegate = new CommandLauncher("java -jar /Users/nicolas/Downloads/slave.jar");
-
-                @Override
-                protected void launch(OneShotComputer computer, TaskListener listener) throws IOException, InterruptedException {
-                    delegate.launch(computer, listener);
-                }
-
-        }, Charset.defaultCharset());
-    }
 }
