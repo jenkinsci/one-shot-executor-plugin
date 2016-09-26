@@ -31,13 +31,10 @@ import hudson.model.Computer;
 import hudson.model.Node;
 import hudson.model.Queue;
 import hudson.model.Run;
-import hudson.model.TaskListener;
 import hudson.model.listeners.RunListener;
 import hudson.model.queue.QueueListener;
-import hudson.util.StreamTaskListener;
 import jenkins.model.Jenkins;
 
-import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -58,7 +55,7 @@ public class OneShotExecutorQueueListener extends QueueListener {
     @Override
     public void onEnterBuildable(Queue.BuildableItem item) {
 
-        for (OneShotProvisioner provisioner : OneShotProvisioner.provisioners()) {
+        for (OneShotProvisioner provisioner : OneShotProvisioner.all()) {
             if (provisioner.usesOneShotExecutor(item)) {
                 try {
                     OneShotSlave slave = provisioner.prepareExecutorFor(item);

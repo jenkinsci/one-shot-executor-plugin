@@ -41,7 +41,7 @@ import java.nio.charset.Charset;
 public class DemoOneShotProvisioner extends OneShotProvisioner {
 
     @Override
-    protected boolean usesOneShotExecutor(Queue.Item item) {
+    public boolean usesOneShotExecutor(Queue.Item item) {
         return true;
     }
 

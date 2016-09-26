@@ -26,16 +26,10 @@
 package org.jenkinsci.plugins.oneshot;
 
 import hudson.ExtensionList;
-import hudson.model.Descriptor;
-import hudson.model.ManagementLink;
+import hudson.ExtensionPoint;
 import hudson.model.Queue;
 import hudson.model.TaskListener;
-import jenkins.model.Jenkins;
-import org.kohsuke.stapler.StaplerRequest;
-import org.kohsuke.stapler.StaplerResponse;
 
-import javax.servlet.ServletException;
-import java.io.IOException;
 import java.util.List;
 
 /**
@@ -43,44 +37,13 @@ import java.util.List;
  * Plugins to manage lightweight agents can use this extension point to determine jobs which require.
  * @author <a href="mailto:nicolas.deloof@gmail.com">Nicolas De Loof</a>
  */
-public abstract class OneShotProvisioner<T extends OneShotSlave> extends ManagementLink {
-
-    @Override
-    public String getIconFileName() {
-        return "/plugin/one-shot-executor/images/48x48/one-shot.png";
-    }
-
-    public static List<OneShotProvisioner> provisioners() {
-        return ExtensionList.lookup(OneShotProvisioner.class);
-    }
-
-    @Override
-    public String getDisplayName() {
-        return "One-Shot executors";
-    }
-
-    @Override
-    public String getUrlName() {
-        return "one-shot-executors";
-    }
-
-    public void doConfigSubmit(StaplerRequest req, StaplerResponse rsp) throws IOException, ServletException, Descriptor.FormException {
-        req.bindJSON(this, req.getSubmittedForm());
-        configure();
-        rsp.sendRedirect2(Jenkins.getInstance().getRootUrl());
-    }
-
-    /**
-     * Post-configure hook so implementation can apply default valyes or other post-construction resources setup.
-     */
-    protected void configure() { }
-
+public abstract class OneShotProvisioner<T extends OneShotSlave> implements ExtensionPoint {
 
     /**
      * Determine if this ${@link Queue.Item} do rely on One-Shot executors, and should be
      * handled by this specific provisioner.
      */
-    protected abstract boolean usesOneShotExecutor(Queue.Item item);
+    public abstract boolean usesOneShotExecutor(Queue.Item item);
 
     /**
      * Determine if the underlying infrastructure has enough resources to create a slave
@@ -100,7 +63,9 @@ public abstract class OneShotProvisioner<T extends OneShotSlave> extends Managem
      */
     public abstract T prepareExecutorFor(Queue.BuildableItem item) throws Exception;
 
-
+    public static List<OneShotProvisioner> all() {
+        return ExtensionList.lookup(OneShotProvisioner.class);
+    }
 }
 
 
