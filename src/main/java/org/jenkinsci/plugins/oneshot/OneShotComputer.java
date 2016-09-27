@@ -29,10 +29,12 @@ import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import hudson.model.Executor;
 import hudson.model.Run;
 import hudson.model.TaskListener;
+import hudson.remoting.Channel;
 import hudson.slaves.SlaveComputer;
 import jenkins.model.Jenkins;
 
 import java.io.IOException;
+import java.io.OutputStream;
 import java.util.concurrent.Callable;
 
 /**
@@ -41,6 +43,7 @@ import java.util.concurrent.Callable;
 public class OneShotComputer<S extends OneShotSlave> extends SlaveComputer {
 
     private final S slave;
+    private TaskListener listener;
 
     public OneShotComputer(S slave) {
         super(slave);
@@ -89,5 +92,26 @@ public class OneShotComputer<S extends OneShotSlave> extends SlaveComputer {
      * @param listener build log so one can report proper termination
      */
     protected void terminate(TaskListener listener) throws Exception {
+    }
+
+    @Override
+    public void setChannel(Channel channel, OutputStream launchLog, Channel.Listener listener) throws IOException, InterruptedException {
+        try {
+            super.setChannel(channel, launchLog, listener);
+        } catch (IOException e) {
+            // Failed to establish channel - used to capture failure to launch JNLP slaves
+            e.printStackTrace(getListener().getLogger());
+            throw e;
+        }
+    }
+
+    public void setListener(TaskListener listener) {
+        this.listener = listener;
+    }
+
+    @Override
+    public TaskListener getListener() {
+        if (listener == null) return super.getListener();
+        return listener;
     }
 }

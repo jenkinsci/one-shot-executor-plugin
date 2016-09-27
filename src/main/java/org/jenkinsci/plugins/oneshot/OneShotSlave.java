@@ -232,7 +232,10 @@ public class OneShotSlave extends Slave implements EphemeralNode {
     protected void doActualLaunch(TaskListener listener) {
 
         try {
-            launcher.launch(this.getComputer(), listener);
+            final OneShotComputer computer = this.getComputer();
+            // replace computer log listener with build one, so we capture provisionning issues.
+            computer.setListener(listener);
+            launcher.launch(computer, listener);
 
             if (getComputer().isActuallyOffline()) {
                 listener.getLogger().println("Failed to provision Agent");
