@@ -88,6 +88,9 @@ public class OneShotSlave extends Slave implements EphemeralNode {
 
     private String taskName;
 
+    /** Flag for failure creating the associated Agent */
+    private transient boolean dead;
+
     /**
      * @param queueItem
      *        The {@link Queue.Item} this slave is assigned to
@@ -147,8 +150,12 @@ public class OneShotSlave extends Slave implements EphemeralNode {
             : super.getNodeDescription();
     }
 
+    protected Charset getCharset() {
+        return Charset.forName(charset);
+    }
+
     @Override
-    public Computer createComputer() {
+    public OneShotComputer createComputer() {
         return new OneShotComputer(this);
     }
 
@@ -163,6 +170,7 @@ public class OneShotSlave extends Slave implements EphemeralNode {
 
     @Override
     public OneShotComputer getComputer() {
+        if (dead) return new DeadComputer(this);
         return (OneShotComputer) super.getComputer();
     }
 
@@ -193,7 +201,7 @@ public class OneShotSlave extends Slave implements EphemeralNode {
                     LOGGER.log(Level.WARNING, "Failed to filter log with " + f, e);
                 }
             }
-            listener = new StreamTaskListener(os, Charset.forName(charset));
+            listener = new StreamTaskListener(os, getCharset());
         } catch (FileNotFoundException e) {
             throw new OneShotExecutorProvisioningError(e);
         }
@@ -227,14 +235,18 @@ public class OneShotSlave extends Slave implements EphemeralNode {
             launcher.launch(this.getComputer(), listener);
 
             if (getComputer().isActuallyOffline()) {
-                if (executable instanceof Run)
+                listener.getLogger().println("Failed to provision Agent");
+                if (executable instanceof Run) {
                     ((Run)executable).setResult(Result.NOT_BUILT);
-                throw new OneShotExecutorProvisioningError();
+                }
+                dead = true;
             }
         } catch (Exception e) {
+            listener.getLogger().println("Failed to provision Agent");
             if (executable instanceof Run)
                 ((Run)executable).setResult(Result.NOT_BUILT);
-            throw new OneShotExecutorProvisioningError(e);
+            e.printStackTrace(listener.getLogger());
+            dead = true;
         }
     }
 
