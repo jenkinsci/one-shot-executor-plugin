@@ -150,6 +150,10 @@ public class OneShotSlave extends Slave implements EphemeralNode {
             : super.getNodeDescription();
     }
 
+    public long getQueueItemId() {
+        return queueItemId;
+    }
+
     protected Charset getCharset() {
         return Charset.forName(charset);
     }

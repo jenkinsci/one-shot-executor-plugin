@@ -25,11 +25,16 @@
 
 package org.jenkinsci.plugins.oneshot;
 
+import com.google.common.base.Predicate;
 import hudson.ExtensionList;
 import hudson.ExtensionPoint;
+import hudson.model.Node;
 import hudson.model.Queue;
 import hudson.model.TaskListener;
+import hudson.model.queue.CauseOfBlockage;
+import jenkins.model.Jenkins;
 
+import javax.annotation.Nonnull;
 import java.util.List;
 
 /**
@@ -61,11 +66,39 @@ public abstract class OneShotProvisioner<T extends OneShotSlave> implements Exte
      * derived class <em>but</em> not run any actual provisioning, which will get postponed
      * until the run has started and {@link OneShotSlave#doActualLaunch(TaskListener)} is ran.
      */
-    public abstract T prepareExecutorFor(Queue.BuildableItem item) throws Exception;
+    public abstract @Nonnull T prepareExecutorFor(Queue.BuildableItem item) throws Exception;
 
     public static List<OneShotProvisioner> all() {
         return ExtensionList.lookup(OneShotProvisioner.class);
     }
+
+    /**
+     * Utility method to count active one-shot-executors.
+     * Implementors can rely on this to implement ${@link #canRun(Queue.Item)} using a simple <em>max number of instances</em>
+     * approach, comparable to ${@link hudson.slaves.AbstractCloudImpl#setInstanceCap(int)}
+     */
+    protected int countExecutors(Class<T> type, Predicate<T> ... filters) {
+        int slaveCount = 0;
+        NODES:
+        for (Node node : Jenkins.getInstance().getNodes()) {
+            if (type.isAssignableFrom(type)) {
+                T s = (T) node;
+                for (Predicate<T> filter : filters) {
+                    if (filter.apply(s)) break NODES;
+                }
+                slaveCount++;
+            }
+        }
+        return slaveCount;
+    }
+
+    public static final CauseOfBlockage WAIT_FOR_RESOURCES = new CauseOfBlockage() {
+        @Override
+        public String getShortDescription() {
+            return "Waiting for available resources";
+        }
+    };
+
 }
 
 
