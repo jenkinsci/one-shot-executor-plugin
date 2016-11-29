@@ -27,65 +27,52 @@ package org.jenkinsci.plugins.oneshot;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import hudson.model.Executor;
-import hudson.model.Run;
+import hudson.model.Slave;
 import hudson.model.TaskListener;
-import hudson.remoting.Channel;
 import hudson.slaves.SlaveComputer;
 import jenkins.model.Jenkins;
 
 import java.io.IOException;
-import java.io.OutputStream;
 import java.util.concurrent.Callable;
 
 /**
- * @author <a href="mailto:nicolas.deloof@gmail.com">Nicolas De Loof</a>
+ * A computer that will be used only once, for a build, then destroyed.
+ * Better than relying on {@link hudson.slaves.RetentionStrategy} we capture the {@link Executor}
+ * end-of-life event.
  */
-public class OneShotComputer<S extends OneShotSlave> extends UseOnceComputer {
+public class UseOnceComputer extends SlaveComputer {
 
-    private final S slave;
-    private TaskListener listener;
-
-    public OneShotComputer(S slave) {
+    public UseOnceComputer(Slave slave) {
         super(slave);
-        this.slave = slave;
     }
 
     @Override
-    public S getNode() {
-        return slave;
+    @SuppressFBWarnings(value="RV_RETURN_VALUE_IGNORED_BAD_PRACTICE")
+    protected final void removeExecutor(Executor e) {
+        setAcceptingTasks(false);
+        threadPoolForRemoting.submit(new Callable<Object>() {
+            @Override
+            public Object call() throws Exception {
+                try {
+                    final Slave node = getNode();
+                    if (node != null) {
+                        Jenkins.getInstance().removeNode(node);
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                terminate(getListener());
+                return null;
+            }
+        });
+        super.removeExecutor(e);
     }
 
     /**
-     * Claim we are online so we get task assigned to the executor, so a ${@link Run} is created, then can actually
-     * launch and report provisioning status in the build log.
+     * Implement can override this method to cleanly terminate the executor and cleanup resources.
+     * @param listener build log so one can report proper termination
      */
-    @Override
-    public boolean isOffline() {
-        return false;
+    protected void terminate(TaskListener listener) throws Exception {
     }
 
-    public boolean isActuallyOffline() {
-        return super.isOffline();
-    }
-
-    @Override
-    public void setChannel(Channel channel, OutputStream launchLog, Channel.Listener listener) throws IOException, InterruptedException {
-        try {
-            super.setChannel(channel, launchLog, listener);
-        } catch (IOException e) {
-            // Failed to establish channel - used to capture failure to launch JNLP slaves
-            e.printStackTrace(getListener().getLogger());
-            throw e;
-        }
-    }
-
-    public void setListener(TaskListener listener) {
-        this.listener = listener;
-    }
-
-    @Override
-    public TaskListener getListener() {
-        if (listener == null) return super.getListener();
-        return listener;
-    }
 }
