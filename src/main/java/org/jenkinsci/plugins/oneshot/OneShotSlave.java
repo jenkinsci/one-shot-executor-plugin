@@ -37,6 +37,7 @@ import hudson.model.Slave;
 import hudson.model.TaskListener;
 import hudson.model.queue.CauseOfBlockage;
 import hudson.slaves.ComputerLauncher;
+import hudson.slaves.ComputerLauncherFilter;
 import hudson.slaves.EphemeralNode;
 import hudson.slaves.RetentionStrategy;
 import hudson.slaves.SlaveComputer;
@@ -72,7 +73,7 @@ public class OneShotSlave extends Slave implements EphemeralNode {
 
     private static final long serialVersionUID = 42L;
 
-    private final transient OneShotComputerLauncher launcher;
+    private final transient ComputerLauncher launcher;
 
     /**
      *  Charset used by the computer, used to write into log.
@@ -105,9 +106,20 @@ public class OneShotSlave extends Slave implements EphemeralNode {
      * @throws Descriptor.FormException
      * @throws IOException
      */
-    public OneShotSlave(Queue.BuildableItem queueItem, String nodeDescription, String remoteFS, OneShotComputerLauncher launcher, Charset charset) throws Descriptor.FormException, IOException {
+    public OneShotSlave(Queue.BuildableItem queueItem, String nodeDescription, String remoteFS, ComputerLauncher launcher, Charset charset) throws Descriptor.FormException, IOException {
         // Create a slave with a NoOp launcher, we will run the launcher later when a Run has been created.
-        super(Long.toHexString(System.nanoTime()), remoteFS, NOOP_LAUNCHER);
+        super(Long.toHexString(System.nanoTime()), remoteFS, new ComputerLauncherFilter(launcher) {
+
+            /**
+             * We don't actually launch slave when requested by standard lifecycle, but only when the {@link Run} has started.
+             * So this filter is used to prevent launch, while still exposing the actual {@link ComputerLauncher} to core.
+             * (see JENKINS-39232)
+             */
+            @Override
+            public void launch(SlaveComputer computer, TaskListener listener) throws IOException, InterruptedException {
+                // NoOp
+            }
+        });
         this.queueItemId = queueItem.getId();
         this.taskName = queueItem.task.getDisplayName();
         setNodeDescription(nodeDescription);
@@ -267,17 +279,6 @@ public class OneShotSlave extends Slave implements EphemeralNode {
 
         return super.createLauncher(listener);
     }
-
-    /**
-     * Fake computer launche that is jug No-op as we wait for the job to get assigned to this executor before the
-     * actual launch.
-     */
-    private static final ComputerLauncher NOOP_LAUNCHER = new ComputerLauncher() {
-        @Override
-        public void launch(SlaveComputer computer, TaskListener listener) throws IOException, InterruptedException {
-            // noop;
-        }
-    };
 
     @Override
     public OneShotSlave asNode() {

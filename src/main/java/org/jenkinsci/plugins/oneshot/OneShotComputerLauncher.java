@@ -33,6 +33,7 @@ import java.io.IOException;
 
 /**
  * @author <a href="mailto:nicolas.deloof@gmail.com">Nicolas De Loof</a>
+ * @deprecated with strict check for JNLPLauncher this isn't usable anymore, see JENKINS-39232
  */
 public abstract class OneShotComputerLauncher<C extends OneShotComputer> extends ComputerLauncher {
 

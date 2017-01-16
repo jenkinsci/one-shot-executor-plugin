@@ -53,14 +53,6 @@ public class DemoOneShotProvisioner extends OneShotProvisioner {
     @Override
     public OneShotSlave prepareExecutorFor(Queue.BuildableItem item) throws Exception {
         return new OneShotSlave(item, "demo", "/Users/nicolas/jenkins",
-            new OneShotComputerLauncher() {
-                ComputerLauncher delegate = new CommandLauncher("java -jar /Users/nicolas/Downloads/slave.jar");
-
-                @Override
-                protected void launch(OneShotComputer computer, TaskListener listener) throws IOException, InterruptedException {
-                    delegate.launch(computer, listener);
-                }
-
-        }, Charset.defaultCharset());
+            new CommandLauncher("java -jar /Users/nicolas/Downloads/slave.jar"), Charset.defaultCharset());
     }
 }
