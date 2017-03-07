@@ -28,9 +28,11 @@ package org.jenkinsci.plugins.oneshot;
 import hudson.Extension;
 import hudson.ExtensionList;
 import hudson.model.Computer;
+import hudson.model.Label;
 import hudson.model.Node;
 import hudson.model.Queue;
 import hudson.model.Run;
+import hudson.model.labels.LabelAtom;
 import hudson.model.listeners.RunListener;
 import hudson.model.queue.QueueListener;
 import jenkins.model.Jenkins;
@@ -54,6 +56,23 @@ public class OneShotExecutorQueueListener extends QueueListener {
      */
     @Override
     public void onEnterBuildable(Queue.BuildableItem item) {
+
+        final Label label = item.task.getAssignedLabel();
+        if (label != null) {
+            for (Node node : label.getNodes()) {
+                if (node instanceof OneShotSlave) {
+                    for (LabelAtom atom : label.listAtoms()) {
+                        if (node.getNodeName().equals(atom.getName())) {
+                            // exact slave name match
+                            // So this item is labelled to run on an _existing_ one-shot-slave
+                            // This happens as a pipeline re-hydrate after restart
+                            // So we don't have to create a fresh new slave for it.
+                            return;
+                        }
+                    }
+                }
+            }
+        }
 
         for (OneShotProvisioner provisioner : OneShotProvisioner.all()) {
             if (provisioner.usesOneShotExecutor(item)) {

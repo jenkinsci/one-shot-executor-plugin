@@ -27,23 +27,22 @@ package org.jenkinsci.plugins.oneshot;
 
 import hudson.Launcher;
 import hudson.console.ConsoleLogFilter;
-import hudson.model.Computer;
 import hudson.model.Descriptor;
 import hudson.model.Executor;
+import hudson.model.Label;
 import hudson.model.Queue;
 import hudson.model.Result;
 import hudson.model.Run;
 import hudson.model.Slave;
 import hudson.model.TaskListener;
+import hudson.model.labels.LabelAtom;
 import hudson.model.queue.CauseOfBlockage;
 import hudson.slaves.ComputerLauncher;
 import hudson.slaves.ComputerLauncherFilter;
-import hudson.slaves.EphemeralNode;
 import hudson.slaves.RetentionStrategy;
 import hudson.slaves.SlaveComputer;
 import hudson.util.StreamTaskListener;
 
-import javax.annotation.Nullable;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -69,7 +68,7 @@ import java.util.logging.Logger;
  *
  * @author <a href="mailto:nicolas.deloof@gmail.com">Nicolas De Loof</a>
  */
-public class OneShotSlave extends Slave implements EphemeralNode {
+public class OneShotSlave extends Slave {
 
     private static final long serialVersionUID = 42L;
 
@@ -132,7 +131,25 @@ public class OneShotSlave extends Slave implements EphemeralNode {
 
     @Override
     public CauseOfBlockage canTake(Queue.BuildableItem item) {
-        return (this.queueItemId != item.getId()) ? BecauseNodeIsDedicated : null;
+
+        if (this.queueItemId == item.getId()) return null;
+
+        // By node name, to macth pipeline after restart
+        final Label label = item.task.getAssignedLabel();
+        if (label != null) {
+            for (LabelAtom atom : label.listAtoms()) {
+                if (name.equals(atom.getName())) {
+                    // exact slave name match
+                    return null;
+                }
+            }
+        }
+
+        return BecauseNodeIsDedicated;
+    }
+
+    public Object getExecutable() {
+        return executable;
     }
 
     @Override
@@ -278,11 +295,6 @@ public class OneShotSlave extends Slave implements EphemeralNode {
         setExecutable();
 
         return super.createLauncher(listener);
-    }
-
-    @Override
-    public OneShotSlave asNode() {
-        return this;
     }
 
     private static final Logger LOGGER = Logger.getLogger(OneShotComputer.class.getName());

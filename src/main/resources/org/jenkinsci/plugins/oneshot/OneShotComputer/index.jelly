@@ -1,7 +1,7 @@
 <!--
   ~ The MIT License
   ~
-  ~  Copyright (c) 2016, CloudBees, Inc.
+  ~  Copyright (c) 2017, CloudBees, Inc.
   ~
   ~  Permission is hereby granted, free of charge, to any person obtaining a copy
   ~  of this software and associated documentation files (the "Software"), to deal
@@ -22,35 +22,23 @@
   ~  THE SOFTWARE.
   ~
   -->
-
 <?jelly escape-by-default='true'?>
 <j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form">
-
-  <l:layout norefresh="true" title="${%One-Shot executors}">
-
-    <l:side-panel>
-      <l:tasks>
-        <l:task icon="icon-up icon-md" href="${rootURL}/" title="Back to Dashboard"/>
-        <l:task icon="icon-setting icon-md" href="${rootURL}/manage" title="Manage Jenkins"/>
-      </l:tasks>
-    </l:side-panel>
+  <l:layout title="${it.displayName}">
+    <st:include page="sidepanel.jelly" />
     <l:main-panel>
-      <div class="container-fluid">
-        <div class="row">
-          <div class="col-md-24">
-            <h1>${it.displayName}</h1>
-            <f:form method="post" name="config" action="configSubmit">
-              <j:set var="instance" value="${it}" />
-              <j:set var="descriptor" value="${it.descriptor}" />
-              <st:include page="configure.jelly" optional="true"/>
-              <f:block>
-                <f:submit value="${%Save}" />
-              </f:block>
-            </f:form>
-            <st:adjunct includes="lib.form.confirm" />
-          </div>
-        </div>
-      </div>
+
+      <h1>
+        <l:icon class="${it.iconClassName} icon-xlg" />
+        ${it.caption}
+        <j:if test="${!empty(it.node.nodeDescription)}">
+          <span style="font-size:smaller">(${it.node.nodeDescription})</span>
+        </j:if>
+      </h1>
+
+      <div>One-shot Executor for <a href="${app.rootUrl}${it.node.executable.url}">${it.node.executable}</a></div>
+
     </l:main-panel>
   </l:layout>
+
 </j:jelly>
