@@ -40,26 +40,26 @@ import java.io.IOException;
 /**
  * @author <a href="mailto:nicolas.deloof@gmail.com">Nicolas De Loof</a>
  */
-public class OneShotSlavePickle extends Pickle {
+public class OneShotComputerPickle extends Pickle {
 
 
     private final String name;
 
-    public OneShotSlavePickle(OneShotSlave slave) throws IOException {
-        this.name = slave.getNodeName();
+    public OneShotComputerPickle(OneShotComputer computer) throws IOException {
+        this.name = computer.getName();
 
         final File file = new File(Jenkins.getInstance().getRootDir(), "nodes/" + name + "/config.xml");
         file.getParentFile().mkdirs();
         XmlFile xmlFile = new XmlFile(Jenkins.XSTREAM, file);
-        xmlFile.write(slave);
+        xmlFile.write(computer.getNode());
     }
 
 
     @Override
-    public ListenableFuture<OneShotSlave> rehydrate(FlowExecutionOwner owner) {
-        return new TryRepeatedly<OneShotSlave>(1) {
+    public ListenableFuture<OneShotComputer> rehydrate(FlowExecutionOwner owner) {
+        return new TryRepeatedly<OneShotComputer>(1) {
             @Override
-            protected OneShotSlave tryResolve() {
+            protected OneShotComputer tryResolve() {
                 Jenkins j = Jenkins.getInstance();
                 if (j == null) {
                     return null;
@@ -69,7 +69,7 @@ public class OneShotSlavePickle extends Pickle {
                     XmlFile xmlFile = new XmlFile(Jenkins.XSTREAM, file);
                     OneShotSlave slave = (OneShotSlave) xmlFile.read();
                     Jenkins.getInstance().addNode(slave);
-                    return slave;
+                    return (OneShotComputer) slave.getComputer();
                 } catch (IOException e) {
                     throw new IllegalStateException("Failed to rehydrate OneShotSlavePickle", e);
                 }
@@ -81,10 +81,10 @@ public class OneShotSlavePickle extends Pickle {
     }
 
     @Extension
-    public static final class Factory extends SingleTypedPickleFactory<OneShotSlave> {
-        @Override protected Pickle pickle(OneShotSlave slave) {
+    public static final class Factory extends SingleTypedPickleFactory<OneShotComputer> {
+        @Override protected Pickle pickle(OneShotComputer computer) {
             try {
-                return new OneShotSlavePickle(slave);
+                return new OneShotComputerPickle(computer);
             } catch (IOException e) {
                 throw new IllegalStateException("Failed to create OneShotSlavePickle", e);
             }
