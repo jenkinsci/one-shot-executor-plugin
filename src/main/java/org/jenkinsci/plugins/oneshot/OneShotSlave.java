@@ -30,6 +30,7 @@ import hudson.console.ConsoleLogFilter;
 import hudson.model.Descriptor;
 import hudson.model.Executor;
 import hudson.model.Label;
+import hudson.model.Node;
 import hudson.model.Queue;
 import hudson.model.Result;
 import hudson.model.Run;
@@ -39,6 +40,7 @@ import hudson.model.labels.LabelAtom;
 import hudson.model.queue.CauseOfBlockage;
 import hudson.slaves.ComputerLauncher;
 import hudson.slaves.ComputerLauncherFilter;
+import hudson.slaves.EphemeralNode;
 import hudson.slaves.RetentionStrategy;
 import hudson.slaves.SlaveComputer;
 import hudson.util.StreamTaskListener;
@@ -68,7 +70,7 @@ import java.util.logging.Logger;
  *
  * @author <a href="mailto:nicolas.deloof@gmail.com">Nicolas De Loof</a>
  */
-public class OneShotSlave extends Slave {
+public class OneShotSlave extends Slave implements EphemeralNode {
 
     private static final long serialVersionUID = 42L;
 
@@ -295,6 +297,11 @@ public class OneShotSlave extends Slave {
         setExecutable();
 
         return super.createLauncher(listener);
+    }
+
+    @Override
+    public OneShotSlave asNode() {
+        return this;
     }
 
     private static final Logger LOGGER = Logger.getLogger(OneShotComputer.class.getName());
