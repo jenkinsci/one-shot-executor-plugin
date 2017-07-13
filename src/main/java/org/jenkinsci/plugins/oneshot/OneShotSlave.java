@@ -30,6 +30,7 @@ import hudson.console.ConsoleLogFilter;
 import hudson.model.Descriptor;
 import hudson.model.Executor;
 import hudson.model.Label;
+import hudson.model.ModelObject;
 import hudson.model.Node;
 import hudson.model.Queue;
 import hudson.model.Result;
@@ -159,6 +160,10 @@ public class OneShotSlave extends Slave implements EphemeralNode {
         return "Executor for "+taskName;
     }
 
+    public String getTaskName() {
+        return taskName;
+    }
+
     /**
      * Build is blocked because node is dedicated to another queue item
      */
@@ -224,7 +229,6 @@ public class OneShotSlave extends Slave implements EphemeralNode {
             // allready provisionned
             return;
         }
-        this.executable = run;
 
         TaskListener listener = TaskListener.NULL;
         try {
@@ -240,15 +244,15 @@ public class OneShotSlave extends Slave implements EphemeralNode {
         } catch (FileNotFoundException e) {
             throw new OneShotExecutorProvisioningError(e);
         }
-        doActualLaunch(listener);
-        this.taskName = run.getDisplayName();
+
+        setExecutable(run, listener);
     }
 
     /**
      * Set executable based on current Executor activity.
      * Required for pipeline support.
      */
-    public void setExecutable() {
+    public void setExecutable(TaskListener listener) {
 
         if (this.executable != null) {
             // allready provisionned
@@ -258,10 +262,16 @@ public class OneShotSlave extends Slave implements EphemeralNode {
         final Executor executor = Executor.currentExecutor();
         if (executor == null) throw new IllegalStateException("No executor set");
 
-        this.executable = executor.getCurrentExecutable();
+        setExecutable(executor.getCurrentExecutable().getParent(), listener);
+    }
 
-        doActualLaunch( /* TODO JENKINS-37115 */ TaskListener.NULL);
-        // TODO retrieve pipeline job's name to set taskName
+    private void setExecutable(Object executable, TaskListener listener) {
+
+        this.executable = executable;
+        if (executable instanceof ModelObject) {
+            this.taskName = ((ModelObject) executable).getDisplayName();
+        }
+        doActualLaunch(listener);
     }
 
     protected void doActualLaunch(TaskListener listener) {
@@ -294,7 +304,7 @@ public class OneShotSlave extends Slave implements EphemeralNode {
      */
     @Override
     public Launcher createLauncher(TaskListener listener) {
-        setExecutable();
+        setExecutable(listener);
 
         return super.createLauncher(listener);
     }

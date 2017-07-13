@@ -56,7 +56,7 @@ public class OneShotComputerPickle extends Pickle {
 
 
     @Override
-    public ListenableFuture<OneShotComputer> rehydrate(FlowExecutionOwner owner) {
+    public ListenableFuture<OneShotComputer> rehydrate(final FlowExecutionOwner owner) {
         return new TryRepeatedly<OneShotComputer>(1) {
             @Override
             protected OneShotComputer tryResolve() {

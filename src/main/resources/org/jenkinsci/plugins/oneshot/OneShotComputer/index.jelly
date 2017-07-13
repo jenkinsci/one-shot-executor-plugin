@@ -36,7 +36,7 @@
         </j:if>
       </h1>
 
-      <div>One-shot Executor for <a href="${app.rootUrl}${it.node.executable.url}">${it.node.executable}</a></div>
+      <div>One-shot Executor for <a href="${app.rootUrl}${it.node.executable.url}">${it.node.taskName}</a></div>
 
     </l:main-panel>
   </l:layout>
