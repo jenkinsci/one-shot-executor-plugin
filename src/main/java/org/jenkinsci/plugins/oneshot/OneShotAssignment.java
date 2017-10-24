@@ -27,8 +27,11 @@ package org.jenkinsci.plugins.oneshot;
 
 import hudson.model.InvisibleAction;
 import hudson.model.Label;
+import hudson.model.Node;
 import hudson.model.labels.LabelAssignmentAction;
+import hudson.model.labels.LabelAtom;
 import hudson.model.queue.SubTask;
+import hudson.util.VariableResolver;
 import jenkins.model.Jenkins;
 
 import javax.annotation.CheckForNull;
@@ -40,19 +43,35 @@ import javax.annotation.CheckForNull;
 public class OneShotAssignment extends InvisibleAction implements LabelAssignmentAction {
 
 
-    private final String assignedNodeName;
+    private final OneShotAssignementLabel label;
 
     public OneShotAssignment(String assignedNodeName) {
-        this.assignedNodeName = assignedNodeName;
+        this.label = new OneShotAssignementLabel(assignedNodeName);
     }
 
     public @CheckForNull
     OneShotSlave getAssignedNode() {
-        return (OneShotSlave) Jenkins.getInstance().getNode(assignedNodeName);
+        return (OneShotSlave) Jenkins.getInstance().getNode(label.getNodeName());
     }
 
     @Override
     public Label getAssignedLabel(SubTask task) {
-        return Label.get(assignedNodeName);
+        return label;
+    }
+
+
+    public static class OneShotAssignementLabel extends LabelAtom {
+
+        public OneShotAssignementLabel(String nodeName) {
+            super(nodeName);
+        }
+
+        protected String getNodeName() {
+            return name;
+        }
+
+        public boolean matches(OneShotSlave node) {
+            return getNodeName().equals(node.getNodeName());
+        }
     }
 }

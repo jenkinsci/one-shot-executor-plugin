@@ -25,8 +25,10 @@
 
 package org.jenkinsci.plugins.oneshot;
 
+import hudson.Extension;
 import hudson.Launcher;
 import hudson.console.ConsoleLogFilter;
+import hudson.model.Computer;
 import hudson.model.Descriptor;
 import hudson.model.Executor;
 import hudson.model.Label;
@@ -38,13 +40,14 @@ import hudson.model.Run;
 import hudson.model.Slave;
 import hudson.model.TaskListener;
 import hudson.model.labels.LabelAtom;
+import hudson.model.listeners.RunListener;
 import hudson.model.queue.CauseOfBlockage;
 import hudson.slaves.ComputerLauncher;
 import hudson.slaves.ComputerLauncherFilter;
 import hudson.slaves.EphemeralNode;
 import hudson.slaves.RetentionStrategy;
-import hudson.slaves.SlaveComputer;
 import hudson.util.StreamTaskListener;
+import org.jenkinsci.plugins.workflow.support.steps.ExecutorStepExecution;
 
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -71,11 +74,9 @@ import java.util.logging.Logger;
  *
  * @author <a href="mailto:nicolas.deloof@gmail.com">Nicolas De Loof</a>
  */
-public class OneShotSlave extends Slave implements EphemeralNode {
+public class OneShotSlave extends Slave {
 
     private static final long serialVersionUID = 42L;
-
-    private final transient ComputerLauncher launcher;
 
     /**
      *  Charset used by the computer, used to write into log.
@@ -83,8 +84,8 @@ public class OneShotSlave extends Slave implements EphemeralNode {
      */
     private final String charset;
 
-    /** The ${@link Run} or ${@link Queue.Executable} assigned to this OneShotSlave */
-    private transient Object executable;
+    /** The ${@link Run} assigned to this OneShotSlave */
+    private transient Run executable;
 
     /** ID of the item from build Queue we are assigned to */
     private final long queueItemId;
@@ -108,28 +109,21 @@ public class OneShotSlave extends Slave implements EphemeralNode {
      * @throws Descriptor.FormException
      * @throws IOException
      */
-    public OneShotSlave(Queue.BuildableItem queueItem, String nodeDescription, String remoteFS, ComputerLauncher launcher, Charset charset) throws Descriptor.FormException, IOException {
+    public OneShotSlave(Queue.BuildableItem queueItem, String nodeDescription, String remoteFS, final ComputerLauncher launcher, Charset charset) throws Descriptor.FormException, IOException {
         // Create a slave with a NoOp launcher, we will run the launcher later when a Run has been created.
-        super(Long.toHexString(System.nanoTime()), remoteFS, new ComputerLauncherFilter(launcher) {
-
-            /**
-             * We don't actually launch slave when requested by standard lifecycle, but only when the {@link Run} has started.
-             * So this filter is used to prevent launch, while still exposing the actual {@link ComputerLauncher} to core.
-             * (see JENKINS-39232)
-             */
-            @Override
-            public void launch(SlaveComputer computer, TaskListener listener) throws IOException, InterruptedException {
-                // NoOp
-            }
-        });
+        super(Long.toHexString(System.nanoTime()), remoteFS, new OneShotComputerLauncher(launcher));
         this.queueItemId = queueItem.getId();
         this.taskName = queueItem.task.getDisplayName();
         setNodeDescription(nodeDescription);
         setNumExecutors(1);
         setMode(Mode.EXCLUSIVE);
         setRetentionStrategy(RetentionStrategy.NOOP);
-        this.launcher = launcher;
         this.charset = charset.name();
+    }
+
+    @Override
+    public String getDisplayName() {
+        return "Executor for " + taskName;
     }
 
     @Override
@@ -137,31 +131,12 @@ public class OneShotSlave extends Slave implements EphemeralNode {
 
         if (this.queueItemId == item.getId()) return null;
 
-        // By node name, to macth pipeline after restart
         final Label label = item.task.getAssignedLabel();
         if (label != null) {
-            for (LabelAtom atom : label.listAtoms()) {
-                if (name.equals(atom.getName())) {
-                    // exact slave name match
-                    return null;
-                }
-            }
+            if (label.matches(this)) return null;
         }
 
         return BecauseNodeIsDedicated;
-    }
-
-    public Object getExecutable() {
-        return executable;
-    }
-
-    @Override
-    public String getDisplayName() {
-        return "Executor for "+taskName;
-    }
-
-    public String getTaskName() {
-        return taskName;
     }
 
     /**
@@ -181,13 +156,9 @@ public class OneShotSlave extends Slave implements EphemeralNode {
 
     @Override
     public String getNodeDescription() {
-        return hasExecutable() && executable instanceof Run
-            ? "executor for " + ((Run) executable).getFullDisplayName()
+        return hasExecutable()
+            ? "executor for " + executable.getFullDisplayName()
             : super.getNodeDescription();
-    }
-
-    public long getQueueItemId() {
-        return queueItemId;
     }
 
     protected Charset getCharset() {
@@ -208,11 +179,52 @@ public class OneShotSlave extends Slave implements EphemeralNode {
         return executable != null;
     }
 
+    // for UI
+    public Run getExecutable() {
+        return executable;
+    }
+
+    // for UI
+    public String getTaskName() {
+        return taskName;
+    }
+
     @Override
     public OneShotComputer getComputer() {
         if (dead) return new DeadComputer(this);
         return (OneShotComputer) super.getComputer();
     }
+
+
+
+    // --- Actual Run execution detection
+
+    @Extension
+    public final static RunListener<Run> LISTENER = new RunListener<Run>() {
+
+        @Override
+        public void onInitialize(Run run) {
+            final Node node = Computer.currentComputer().getNode();
+            if (node instanceof OneShotSlave) {
+                // Assign the OneShotExecutor it's run, so it can actually launch agent
+                ((OneShotSlave) node).setExecutable(run);
+            }
+        }
+    };
+
+
+    /**
+     * Pipeline does not use the same mechanism a other jobs to allocate nodes, especially does not notify
+     * {@link RunListener}s. So we also need to consider ${@link #createLauncher(TaskListener)}
+     * as an event to determine first use of the slave. see https://issues.jenkins-ci.org/browse/JENKINS-35521
+     */
+    @Override
+    public Launcher createLauncher(TaskListener listener) {
+        setExecutable(listener);
+
+        return super.createLauncher(listener);
+    }
+
 
     /**
      * Assign a ${@link Run} to this OneShotSlave. By design, only one Run can be assigned, then slave is shut down.
@@ -232,7 +244,7 @@ public class OneShotSlave extends Slave implements EphemeralNode {
 
         TaskListener listener = TaskListener.NULL;
         try {
-            OutputStream os = new FileOutputStream(run.getLogFile());
+            OutputStream os = new FileOutputStream(run.getLogFile(), true);
             for (ConsoleLogFilter f : ConsoleLogFilter.all()) {
                 try {
                     os = f.decorateLogger(run, os);
@@ -252,7 +264,7 @@ public class OneShotSlave extends Slave implements EphemeralNode {
      * Set executable based on current Executor activity.
      * Required for pipeline support.
      */
-    public void setExecutable(TaskListener listener) {
+    private void setExecutable(TaskListener listener) {
 
         if (this.executable != null) {
             // allready provisionned
@@ -265,22 +277,35 @@ public class OneShotSlave extends Slave implements EphemeralNode {
         setExecutable(executor.getCurrentExecutable().getParent(), listener);
     }
 
-    private void setExecutable(Object executable, TaskListener listener) {
+    /* package */ void setExecutable(Object executable, TaskListener listener) {
 
-        this.executable = executable;
+        synchronized (this) {
+            if (this.executable != null) {
+                return;
+            }
+            if (executable instanceof Run) {
+                this.executable = (Run) executable;
+            } else if (executable instanceof ExecutorStepExecution.PlaceholderTask) {
+                this.executable = ((ExecutorStepExecution.PlaceholderTask) executable).run();
+            } else {
+                throw new IllegalArgumentException(executable.getClass().getName() + " is not supported.");
+            }
+        }
+
         if (executable instanceof ModelObject) {
-            this.taskName = ((ModelObject) executable).getDisplayName();
+            this.taskName = this.executable.getFullDisplayName();
         }
         doActualLaunch(listener);
     }
 
-    protected void doActualLaunch(TaskListener listener) {
+    private void doActualLaunch(TaskListener listener) {
+
+        beforeLaunch(executable, listener);
 
         try {
             final OneShotComputer computer = this.getComputer();
             // replace computer log listener with build one, so we capture provisionning issues.
-            computer.setListener(listener);
-            launcher.launch(computer, listener);
+            getActualLauncher().launch(computer, listener);
 
             if (getComputer().isActuallyOffline()) {
                 listener.getLogger().println("Failed to provision Agent");
@@ -299,20 +324,22 @@ public class OneShotSlave extends Slave implements EphemeralNode {
     }
 
     /**
-     * Pipeline does not use the same mechanism to use nodes, so we also need to consider ${@link #createLauncher(TaskListener)}
-     * as an event to determine first use of the slave. see https://issues.jenkins-ci.org/browse/JENKINS-35521
+     * Offers an opportunity to customize te laucher/computer based on assigned {@link Run}.
      */
-    @Override
-    public Launcher createLauncher(TaskListener listener) {
-        setExecutable(listener);
-
-        return super.createLauncher(listener);
+    protected void beforeLaunch(Run executable, TaskListener listener) {
+        listener.getLogger().println("Launching a dedicated Agent for " + executable.getFullDisplayName());
     }
 
-    @Override
-    public OneShotSlave asNode() {
-        return this;
+    /**
+     * Retrieve the actual agent Launcher. We expose a No-Operation ComputerLauncher to Jenkins API and use this
+     * one for actual just-in-time provisioning.
+     * Due to JENKINS-39232 we can't just use distinct classes, see {@link OneShotComputerLauncher}
+     * @return
+     */
+    private ComputerLauncher getActualLauncher() {
+        return ((ComputerLauncherFilter) getLauncher()).getCore();
     }
+
 
     private static final Logger LOGGER = Logger.getLogger(OneShotComputer.class.getName());
 }

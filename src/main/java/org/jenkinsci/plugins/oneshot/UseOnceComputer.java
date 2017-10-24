@@ -27,52 +27,72 @@ package org.jenkinsci.plugins.oneshot;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import hudson.model.Executor;
+import hudson.model.ExecutorListener;
+import hudson.model.Queue;
 import hudson.model.Slave;
 import hudson.model.TaskListener;
+import hudson.model.queue.QueueListener;
 import hudson.slaves.SlaveComputer;
 import jenkins.model.Jenkins;
+import org.jenkinsci.plugins.durabletask.executors.ContinuableExecutable;
 
 import java.io.IOException;
 import java.util.concurrent.Callable;
+import java.util.logging.Level;
 
 /**
  * A computer that will be used only once, for a build, then destroyed.
  * Better than relying on {@link hudson.slaves.RetentionStrategy} we capture the {@link Executor}
  * end-of-life event.
  */
-public class UseOnceComputer extends SlaveComputer {
+public class UseOnceComputer extends SlaveComputer implements ExecutorListener {
 
     public UseOnceComputer(Slave slave) {
         super(slave);
     }
 
+
     @Override
+    public void taskCompleted(Executor executor, Queue.Task task, long durationMS) {
+        super.taskCompleted(executor, task, durationMS);
+        done(executor);
+    }
+
+    @Override
+    public void taskCompletedWithProblems(Executor executor, Queue.Task task, long durationMS, Throwable problems) {
+        super.taskCompletedWithProblems(executor, task, durationMS, problems);
+        done(executor);
+    }
+
     @SuppressFBWarnings(value="RV_RETURN_VALUE_IGNORED_BAD_PRACTICE")
-    protected final void removeExecutor(Executor e) {
-        setAcceptingTasks(false);
-        threadPoolForRemoting.submit(new Callable<Object>() {
-            @Override
-            public Object call() throws Exception {
-                try {
+    protected final void done(Executor executor) {
+
+        Queue.Executable exec = executor.getCurrentExecutable();
+        if (exec instanceof ContinuableExecutable && ((ContinuableExecutable) exec).willContinue()) {
+            // sounds like jenkins is restarting and need to shut down executor, but task will continue after restart
+        } else {
+            setAcceptingTasks(false);
+            recordTermination();
+            threadPoolForRemoting.submit(new Callable<Object>() {
+                @Override
+                public Object call() throws Exception {
                     final Slave node = getNode();
                     if (node != null) {
                         Jenkins.getInstance().removeNode(node);
                     }
-                } catch (IOException e) {
-                    e.printStackTrace();
+                    terminate();
+                    return null;
                 }
-                terminate(getListener());
-                return null;
-            }
-        });
-        super.removeExecutor(e);
+            });
+        }
+        super.removeExecutor(executor);
     }
 
     /**
      * Implement can override this method to cleanly terminate the executor and cleanup resources.
-     * @param listener build log so one can report proper termination
      */
-    protected void terminate(TaskListener listener) throws Exception {
+    protected void terminate() throws Exception {
     }
+
 
 }

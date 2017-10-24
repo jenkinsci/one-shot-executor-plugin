@@ -28,6 +28,7 @@ package org.jenkinsci.plugins.oneshot;
 import com.google.common.util.concurrent.ListenableFuture;
 import hudson.Extension;
 import hudson.XmlFile;
+import hudson.model.Node;
 import jenkins.model.Jenkins;
 import org.jenkinsci.plugins.workflow.flow.FlowExecutionOwner;
 import org.jenkinsci.plugins.workflow.pickles.Pickle;
@@ -38,6 +39,8 @@ import java.io.File;
 import java.io.IOException;
 
 /**
+ * A custom pickle to rehydrate OneShotComputer and re-inject a WorkflowRun Executable. This will trigger
+ * computer launch dumping the launch logs into build log, so any failure to reconnect can be reported to end-user.
  * @author <a href="mailto:nicolas.deloof@gmail.com">Nicolas De Loof</a>
  */
 public class OneShotComputerPickle extends Pickle {
@@ -47,11 +50,6 @@ public class OneShotComputerPickle extends Pickle {
 
     public OneShotComputerPickle(OneShotComputer computer) throws IOException {
         this.name = computer.getName();
-
-        final File file = new File(Jenkins.getInstance().getRootDir(), "nodes/" + name + "/config.xml");
-        file.getParentFile().mkdirs();
-        XmlFile xmlFile = new XmlFile(Jenkins.XSTREAM, file);
-        xmlFile.write(computer.getNode());
     }
 
 
@@ -65,11 +63,16 @@ public class OneShotComputerPickle extends Pickle {
                     return null;
                 }
                 try {
-                    final File file = new File(j.getRootDir(), "nodes/" + name + "/config.xml");
-                    XmlFile xmlFile = new XmlFile(Jenkins.XSTREAM, file);
-                    OneShotSlave slave = (OneShotSlave) xmlFile.read();
-                    Jenkins.getInstance().addNode(slave);
-                    return (OneShotComputer) slave.getComputer();
+                    Node n =Jenkins.getInstance().getNode(name);
+                    if (n == null) {
+                        return null;
+                    }
+                    if (n instanceof OneShotSlave) {
+                        OneShotSlave os = (OneShotSlave) n;
+                        os.setExecutable(owner.getExecutable(), owner.getListener());
+                        return os.getComputer();
+                    }
+                    return null;
                 } catch (IOException e) {
                     throw new IllegalStateException("Failed to rehydrate OneShotSlavePickle", e);
                 }

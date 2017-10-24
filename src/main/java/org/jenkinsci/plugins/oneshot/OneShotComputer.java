@@ -42,17 +42,13 @@ import java.util.concurrent.Callable;
  */
 public class OneShotComputer<S extends OneShotSlave> extends UseOnceComputer {
 
-    private final S slave;
-    private TaskListener listener;
-
     public OneShotComputer(S slave) {
         super(slave);
-        this.slave = slave;
     }
 
     @Override
     public S getNode() {
-        return slave;
+        return (S) super.getNode();
     }
 
     /**
@@ -64,28 +60,8 @@ public class OneShotComputer<S extends OneShotSlave> extends UseOnceComputer {
         return false;
     }
 
-    public boolean isActuallyOffline() {
+    /* package */ boolean isActuallyOffline() {
         return super.isOffline();
     }
 
-    @Override
-    public void setChannel(Channel channel, OutputStream launchLog, Channel.Listener listener) throws IOException, InterruptedException {
-        try {
-            super.setChannel(channel, launchLog, listener);
-        } catch (IOException e) {
-            // Failed to establish channel - used to capture failure to launch JNLP slaves
-            e.printStackTrace(getListener().getLogger());
-            throw e;
-        }
-    }
-
-    public void setListener(TaskListener listener) {
-        this.listener = listener;
-    }
-
-    @Override
-    public TaskListener getListener() {
-        if (listener == null) return super.getListener();
-        return listener;
-    }
 }

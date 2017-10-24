@@ -61,14 +61,12 @@ public class OneShotExecutorQueueListener extends QueueListener {
         if (label != null) {
             for (Node node : label.getNodes()) {
                 if (node instanceof OneShotSlave) {
-                    for (LabelAtom atom : label.listAtoms()) {
-                        if (node.getNodeName().equals(atom.getName())) {
-                            // exact slave name match
-                            // So this item is labelled to run on an _existing_ one-shot-slave
-                            // This happens as a pipeline re-hydrate after restart
-                            // So we don't have to create a fresh new slave for it.
-                            return;
-                        }
+                    if (node.canTake(item) == null) {
+                        // exact slave name match
+                        // So this item is labelled to run on an _existing_ one-shot-slave
+                        // This happens as a pipeline re-hydrate after restart
+                        // So we don't have to create a fresh new slave for it.
+                        return;
                     }
                 }
             }
@@ -109,19 +107,6 @@ public class OneShotExecutorQueueListener extends QueueListener {
             }
         }
     }
-
-    @Extension
-    public final static RunListener<Run> LISTENER = new RunListener<Run>() {
-
-        @Override
-        public void onInitialize(Run run) {
-            final Node node = Computer.currentComputer().getNode();
-            if (node instanceof OneShotSlave) {
-                // Assign the OneShotExecutor it's run, so it can actually provision executor node
-                ((OneShotSlave) node).setExecutable(run);
-            }
-        }
-    };
 
     private static final Logger LOGGER = Logger.getLogger(OneShotProvisioner.class.getName());
 }
