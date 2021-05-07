@@ -58,13 +58,13 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * A slave that is designed to be used only once, for a specific ${@link hudson.model.Run}, and as such has a life cycle
+ * An agent that is designed to be used only once, for a specific ${@link hudson.model.Run}, and as such has a life cycle
  * to fully match the Run's one.
  * <p>
- * Provisioning such a slave should be a lightweight process, so one can provision them at any time and concurrently
+ * Provisioning such an agent should be a lightweight process, so one can provision them at any time and concurrently
  * to match ${@link hudson.model.Queue} load. Typical usage is Docker container based Jenkins agents.
  * <p>
- * Actual launch of the Slave is postponed until a ${@link Run} is created, so we can have a 1:1 match between Run and
+ * Actual launch of the agent is postponed until a ${@link Run} is created, so we can have a 1:1 match between Run and
  * Executor lifecycle:
  * <ul>
  *     <li>dump the launch log in build log.</li>
@@ -97,20 +97,20 @@ public class OneShotSlave extends Slave {
 
     /**
      * @param queueItem
-     *        The {@link Queue.Item} this slave is assigned to
+     *        The {@link Queue.Item} this agent is assigned to
      * @param nodeDescription
      *        Node description for UI
      * @param remoteFS
      *        agent working directory
      * @param launcher
-     *        {@link ComputerLauncher} used to bootstrap this slave.
+     *        {@link ComputerLauncher} used to bootstrap this agent.
      * @param charset
      *        Computer's Charset. Need to be set by caller as we can't determine this one before actual launch.
      * @throws Descriptor.FormException
      * @throws IOException
      */
     public OneShotSlave(Queue.BuildableItem queueItem, String nodeDescription, String remoteFS, final ComputerLauncher launcher, Charset charset) throws Descriptor.FormException, IOException {
-        // Create a slave with a NoOp launcher, we will run the launcher later when a Run has been created.
+        // Create an agent with a NoOp launcher, we will run the launcher later when a Run has been created.
         super(Long.toHexString(System.nanoTime()), remoteFS, new OneShotComputerLauncher(launcher));
         this.queueItemId = queueItem.getId();
         this.taskName = queueItem.task.getDisplayName();
@@ -216,7 +216,7 @@ public class OneShotSlave extends Slave {
     /**
      * Pipeline does not use the same mechanism a other jobs to allocate nodes, especially does not notify
      * {@link RunListener}s. So we also need to consider ${@link #createLauncher(TaskListener)}
-     * as an event to determine first use of the slave. see https://issues.jenkins-ci.org/browse/JENKINS-35521
+     * as an event to determine first use of the agent. see https://issues.jenkins-ci.org/browse/JENKINS-35521
      */
     @Override
     public Launcher createLauncher(TaskListener listener) {

@@ -62,10 +62,10 @@ public class OneShotExecutorQueueListener extends QueueListener {
             for (Node node : label.getNodes()) {
                 if (node instanceof OneShotSlave) {
                     if (node.canTake(item) == null) {
-                        // exact slave name match
+                        // exact agent name match
                         // So this item is labelled to run on an _existing_ one-shot-slave
                         // This happens as a pipeline re-hydrate after restart
-                        // So we don't have to create a fresh new slave for it.
+                        // So we don't have to create a fresh new agent for it.
                         return;
                     }
                 }
@@ -80,7 +80,7 @@ public class OneShotExecutorQueueListener extends QueueListener {
                     Jenkins.getInstance().addNode(slave);
                     // slave.connect(true);
                 } catch (Exception e) {
-                    LOGGER.log(Level.SEVERE, "Failure to create One-Shot Slave", e);
+                    LOGGER.log(Level.SEVERE, "Failure to create One-Shot Agent", e);
                     // where to report this to user ?
                     Jenkins.getInstance().getQueue().cancel(item);
                 }
@@ -103,7 +103,7 @@ public class OneShotExecutorQueueListener extends QueueListener {
             try {
                 Jenkins.getInstance().removeNode(slave);
             } catch (Exception e) {
-                LOGGER.log(Level.SEVERE, "Failure to remove One-Shot Slave", e);
+                LOGGER.log(Level.SEVERE, "Failure to remove One-Shot Agent", e);
             }
         }
     }

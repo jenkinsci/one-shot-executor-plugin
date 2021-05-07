@@ -51,7 +51,7 @@ public abstract class OneShotProvisioner<T extends OneShotSlave> implements Exte
     public abstract boolean usesOneShotExecutor(Queue.Item item);
 
     /**
-     * Determine if the underlying infrastructure has enough resources to create a slave
+     * Determine if the underlying infrastructure has enough resources to create an agent
      * for this ${@link Queue.Item}.
      * <p>
      * Implementation can rely on this to reduce concurrent executors on a static infrastructure,
@@ -61,7 +61,7 @@ public abstract class OneShotProvisioner<T extends OneShotSlave> implements Exte
 
     /**
      * Prepare a ${@link OneShotSlave} to run this ${@link Queue.BuildableItem}. The actual
-     * slave isn't launched, just <em>prepared</em> which means we can use it's node name as
+     * agent isn't launched, just <em>prepared</em> which means we can use it's node name as
      * a label to for assignment. Implementation should create adequate {@link OneShotSlave}
      * derived class <em>but</em> not run any actual provisioning, which will get postponed
      * until the run has started and {@link OneShotSlave#doActualLaunch(TaskListener)} is ran.
