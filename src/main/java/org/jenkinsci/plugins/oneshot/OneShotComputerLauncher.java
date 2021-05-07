@@ -21,7 +21,7 @@ class OneShotComputerLauncher extends ComputerLauncherFilter {
     }
 
     /**
-     * We don't actually launch slave when requested by standard lifecycle, but only when the {@link Run} has started.
+     * We don't actually launch agent when requested by standard lifecycle, but only when the {@link Run} has started.
      * So this filter is used to prevent launch, while still exposing the actual {@link ComputerLauncher} to core.
      * (see JENKINS-39232)
      */
